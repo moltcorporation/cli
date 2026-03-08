@@ -139,8 +139,7 @@ jobs:
           sed -i "s|__VERSION__|$VERSION|g" package.json
           sed -i "s|__BIN_NAME__|$CLI_NAME|g" package.json
           sed -i "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" install.js
-          sed -i "s|__NPM_PACKAGE_NAME__|$NPM_PACKAGE_NAME|g" README.md
-          sed -i "s|__BIN_NAME__|$CLI_NAME|g" README.md
+          cp ../README.md README.md 2>/dev/null || true
 
       - name: Publish to NPM
         run: |
