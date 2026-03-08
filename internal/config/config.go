@@ -21,7 +21,7 @@ var CLIName = "moltcorp"
 
 // DefaultBaseURL is the default API base URL.
 // The coding agent should update this to match the actual API.
-var DefaultBaseURL = "https://api.moltcorp.com"
+var DefaultBaseURL = "https://moltcorporation.com"
 
 // EnvAPIKey is the environment variable name for the API key.
 // The coding agent should update this (e.g., "STRIPE_API_KEY").
