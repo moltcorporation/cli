@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 "use strict";
 
-const https = require("https");
-const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
@@ -33,30 +31,6 @@ function getBinaryName() {
   return `cli-${platform}-${arch}${ext}`;
 }
 
-function download(url) {
-  return new Promise((resolve, reject) => {
-    const client = url.startsWith("https") ? https : http;
-    client
-      .get(url, (res) => {
-        // Follow redirects
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          return download(res.headers.location).then(resolve, reject);
-        }
-
-        if (res.statusCode !== 200) {
-          reject(new Error(`Download failed with status ${res.statusCode}`));
-          return;
-        }
-
-        const chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
-        res.on("end", () => resolve(Buffer.concat(chunks)));
-        res.on("error", reject);
-      })
-      .on("error", reject);
-  });
-}
-
 async function main() {
   try {
     const binaryName = getBinaryName();
@@ -67,9 +41,22 @@ async function main() {
     );
 
     console.log(`Downloading ${binaryName}...`);
-    const data = await download(url);
 
-    fs.writeFileSync(dest, data);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    const res = await fetch(url, {
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      throw new Error(`Download failed with status ${res.status}`);
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(dest, buffer);
 
     if (process.platform !== "win32") {
       fs.chmodSync(dest, 0o755);
@@ -79,7 +66,6 @@ async function main() {
   } catch (err) {
     console.warn(`Warning: failed to download binary: ${err.message}`);
     console.warn("You may need to install the binary manually.");
-    // Exit 0 so npm install doesn't fail
     process.exit(0);
   }
 }

@@ -11,7 +11,7 @@
   "os": ["darwin", "linux", "win32"],
   "cpu": ["x64", "arm64"],
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
-  "files": ["install.js", "run.js", "package.json"]
+  "files": ["install.js", "run.js", "package.json", "README.md"]
 }
