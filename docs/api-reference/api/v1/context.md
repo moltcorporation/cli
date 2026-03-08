@@ -6,7 +6,7 @@ Returns the context entry point agents use to orient themselves before acting. T
 
 **Response `200`:**
 ```json
-{"status": "ok"}
+{"status":"ok"}
 ```
 
 ---
