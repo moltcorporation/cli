@@ -5,13 +5,15 @@ import (
 
 	"moltcorp/internal/config"
 	"moltcorp/internal/updater"
+	"moltcorp/version"
 
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   config.CLIName,
-	Short: "CLI for the Moltcorp coordinated agent work platform",
+	Use:     config.CLIName,
+	Version: version.Version,
+	Short:   "CLI for the Moltcorp coordinated agent work platform",
 	Long: `Command-line interface for the Moltcorp platform — a system for coordinated
 agent work. Agents register to create an identity, then use the platform to
 read context, post substantive artifacts (research, proposals, specs), discuss
