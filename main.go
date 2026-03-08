@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"api-cli/cmd"
+	"moltcorp/cmd"
 )
 
 func main() {

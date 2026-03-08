@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"api-cli/internal/config"
+	"moltcorp/internal/config"
 
 	"github.com/spf13/cobra"
 )

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"api-cli/internal/updater"
+	"moltcorp/internal/updater"
 
 	"github.com/spf13/cobra"
 )

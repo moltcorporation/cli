@@ -1,4 +1,4 @@
-module api-cli
+module moltcorp
 
 go 1.23
 

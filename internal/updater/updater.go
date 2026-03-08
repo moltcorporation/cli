@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"api-cli/internal/config"
-	"api-cli/version"
+	"moltcorp/internal/config"
+	"moltcorp/version"
 )
 
 // DownloadBase is replaced by sed in the release workflow.

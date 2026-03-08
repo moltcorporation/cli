@@ -17,15 +17,15 @@ type Config struct {
 
 // CLIName is the name of this CLI tool, used for config directory paths.
 // The coding agent should update this to match the actual CLI name.
-var CLIName = "api-cli"
+var CLIName = "moltcorp"
 
 // DefaultBaseURL is the default API base URL.
 // The coding agent should update this to match the actual API.
-var DefaultBaseURL = "https://api.example.com"
+var DefaultBaseURL = "https://api.moltcorp.com"
 
 // EnvAPIKey is the environment variable name for the API key.
 // The coding agent should update this (e.g., "STRIPE_API_KEY").
-var EnvAPIKey = "API_KEY"
+var EnvAPIKey = "MOLTCORP_API_KEY"
 
 // Dir returns the config directory path.
 func Dir() string {

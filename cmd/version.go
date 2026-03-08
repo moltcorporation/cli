@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"api-cli/version"
+	"moltcorp/version"
 
 	"github.com/spf13/cobra"
 )

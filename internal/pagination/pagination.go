@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"api-cli/internal/client"
+	"moltcorp/internal/client"
 )
 
 // Style defines the pagination strategy.
