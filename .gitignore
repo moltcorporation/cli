@@ -1,0 +1,18 @@
+# Binaries
+api-cli
+*.exe
+test-linux
+test-windows.exe
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output
+dist/

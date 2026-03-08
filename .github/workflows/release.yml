@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish to NPM (e.g. 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Extract version and CLI name
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          CLI_NAME=$(grep '^module ' go.mod | awk '{print $2}' | xargs basename)
+          echo "cli_name=$CLI_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Replace download base URL
+        run: |
+          sed -i 's|__DOWNLOAD_BASE__|${{ vars.DOWNLOAD_BASE_URL }}|g' internal/updater/updater.go
+
+      - name: Cross-compile binaries
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          CLI_NAME: ${{ steps.meta.outputs.cli_name }}
+        run: |
+          LDFLAGS="-s -w -X ${CLI_NAME}/version.Version=$VERSION"
+
+          GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o cli-linux-x64 .
+          GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o cli-linux-arm64 .
+          GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o cli-darwin-x64 .
+          GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o cli-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o cli-windows-x64.exe .
+
+      - name: Process install scripts
+        env:
+          CLI_NAME: ${{ steps.meta.outputs.cli_name }}
+          DOWNLOAD_BASE: ${{ vars.DOWNLOAD_BASE_URL }}
+        run: |
+          sed -e "s|__CLI_NAME__|$CLI_NAME|g" -e "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" scripts/install.sh > install.sh
+          sed -e "s|__CLI_NAME__|$CLI_NAME|g" -e "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" scripts/install.ps1 > install.ps1
+          chmod +x install.sh
+
+      - name: Create latest-version file
+        run: |
+          echo '{"version":"${{ steps.meta.outputs.version }}"}' > latest-version
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            cli-linux-x64
+            cli-linux-arm64
+            cli-darwin-x64
+            cli-darwin-arm64
+            cli-windows-x64.exe
+            install.sh
+            install.ps1
+            latest-version
+
+      - name: Notify release complete
+        if: success()
+        env:
+          CALLBACK_SECRET: ${{ secrets.INSTANTCLI_GITHUB_CALLBACK_SECRET }}
+          PROJECT_ID: ${{ vars.PROJECT_ID }}
+        run: |
+          curl -s -X POST "https://instantcli.com/api/webhooks/github-agent" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $CALLBACK_SECRET" \
+            -d "{\"project_id\":\"$PROJECT_ID\",\"status\":\"released\"}"
+
+      - name: Notify release failure
+        if: failure()
+        env:
+          CALLBACK_SECRET: ${{ secrets.INSTANTCLI_GITHUB_CALLBACK_SECRET }}
+          PROJECT_ID: ${{ vars.PROJECT_ID }}
+        run: |
+          curl -s -X POST "https://instantcli.com/api/webhooks/github-agent" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $CALLBACK_SECRET" \
+            -d "{\"project_id\":\"$PROJECT_ID\",\"status\":\"release_failed\"}"
+
+  publish-npm:
+    if: vars.NPM_PACKAGE_NAME != ''
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Extract CLI name
+        id: meta
+        run: |
+          CLI_NAME=$(grep '^module ' go.mod | awk '{print $2}' | xargs basename)
+          echo "cli_name=$CLI_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare npm package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CLI_NAME: ${{ steps.meta.outputs.cli_name }}
+          NPM_PACKAGE_NAME: ${{ vars.NPM_PACKAGE_NAME }}
+          DOWNLOAD_BASE: ${{ vars.DOWNLOAD_BASE_URL }}
+        run: |
+          cd npm
+          sed -i "s|__NPM_PACKAGE_NAME__|$NPM_PACKAGE_NAME|g" package.json
+          sed -i "s|__VERSION__|$VERSION|g" package.json
+          sed -i "s|__BIN_NAME__|$CLI_NAME|g" package.json
+          sed -i "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" install.js
+
+      - name: Publish to NPM
+        run: |
+          cd npm
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
