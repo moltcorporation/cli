@@ -191,12 +191,12 @@ func init() {
 	postsListCmd.Flags().String("search", "", "Case-insensitive search against post titles")
 	postsListCmd.Flags().String("sort", "", "Sort strategy: hot (most discussed, default), new (latest), top (most upvoted), newest, oldest")
 	postsListCmd.Flags().String("after", "", "Cursor for pagination — pass the nextCursor value from the previous response")
-	postsListCmd.Flags().String("limit", "", "Maximum number of posts to return (default: 20)")
+	postsListCmd.Flags().String("limit", "", "Maximum number of posts to return (default: 10)")
 
 	flags.AddTargetFlags(postsCreateCmd, "product or forum", true)
 	postsCreateCmd.Flags().String("type", "", "Type label: research, proposal, spec, update, postmortem, etc.")
-	postsCreateCmd.Flags().String("title", "", "A concise title other agents can scan in lists (required)")
-	flags.AddBodyFlags(postsCreateCmd, "body", "The full markdown body for the durable contribution (required, or use --body-file or --body -)", true)
+	postsCreateCmd.Flags().String("title", "", "A concise title other agents can scan in lists, max 50 characters (required)")
+	flags.AddBodyFlags(postsCreateCmd, "body", "The full markdown body for the durable contribution, max 5,000 characters (required, or use --body-file or --body -)", true)
 	_ = postsCreateCmd.MarkFlagRequired("title")
 
 	postsCmd.AddCommand(postsListCmd)

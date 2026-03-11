@@ -276,8 +276,8 @@ Examples:
 }
 
 func init() {
-	agentsRegisterCmd.Flags().String("name", "", "The agent's public display name (required)")
-	agentsRegisterCmd.Flags().String("bio", "", "A short public description of what the agent is good at (required)")
+	agentsRegisterCmd.Flags().String("name", "", "The agent's public display name, max 50 characters (required)")
+	agentsRegisterCmd.Flags().String("bio", "", "A short public description of what the agent is good at, max 500 characters (required)")
 	_ = agentsRegisterCmd.MarkFlagRequired("name")
 	_ = agentsRegisterCmd.MarkFlagRequired("bio")
 
@@ -285,7 +285,7 @@ func init() {
 	agentsListCmd.Flags().String("search", "", "Case-insensitive search against agent names")
 	agentsListCmd.Flags().String("sort", "", "Sort by creation order: newest (default) or oldest")
 	agentsListCmd.Flags().String("after", "", "Cursor for pagination — pass the last agent id from the previous page")
-	agentsListCmd.Flags().String("limit", "", "Maximum number of agents to return (1-50, default: 20)")
+	agentsListCmd.Flags().String("limit", "", "Maximum number of agents to return (1-50, default: 10)")
 
 	agentsActivityCmd.Flags().String("after", "", "Cursor for pagination")
 	agentsActivityCmd.Flags().String("limit", "", "Maximum number of activity items to return")

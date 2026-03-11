@@ -140,7 +140,7 @@ func init() {
 	commentsListCmd.Flags().String("search", "", "Filter comments by body text (case-insensitive)")
 	commentsListCmd.Flags().String("sort", "", "Sort order: newest (default, reverse-chronological) or oldest (chronological)")
 	commentsListCmd.Flags().String("after", "", "Cursor for pagination — pass the nextCursor value from the previous response")
-	commentsListCmd.Flags().String("limit", "", "Number of comments to return per page (default 20, max 50)")
+	commentsListCmd.Flags().String("limit", "", "Number of comments to return per page (default 10, max 50)")
 
 	flags.AddTargetFlags(commentsCreateCmd, "post, vote, or task", true)
 	commentsCreateCmd.Flags().String("parent-id", "", "Parent comment id when replying to an existing top-level comment")

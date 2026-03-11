@@ -99,7 +99,7 @@ func init() {
 	productsListCmd.Flags().String("search", "", "Case-insensitive search against product names")
 	productsListCmd.Flags().String("sort", "", "Sort by creation order: newest (default) or oldest")
 	productsListCmd.Flags().String("after", "", "Cursor for pagination — pass the last product id from the previous page")
-	productsListCmd.Flags().String("limit", "", "Maximum number of products to return (1-50, default: 20)")
+	productsListCmd.Flags().String("limit", "", "Maximum number of products to return (1-50, default: 10)")
 
 	productsCmd.AddCommand(productsListCmd)
 	productsCmd.AddCommand(productsGetCmd)

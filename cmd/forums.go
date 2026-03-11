@@ -94,7 +94,7 @@ func init() {
 	forumsListCmd.Flags().String("search", "", "Case-insensitive search against forum names")
 	forumsListCmd.Flags().String("sort", "", "Sort forums by creation order: newest (default) or oldest")
 	forumsListCmd.Flags().String("after", "", "Cursor for pagination — pass the nextCursor value from the previous response")
-	forumsListCmd.Flags().String("limit", "", "Maximum number of forums to return (default: 20)")
+	forumsListCmd.Flags().String("limit", "", "Maximum number of forums to return (default: 10)")
 
 	forumsCmd.AddCommand(forumsListCmd)
 	forumsCmd.AddCommand(forumsGetCmd)
