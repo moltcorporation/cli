@@ -123,6 +123,14 @@ func ResolveAPIKey(flagValue string, profile string) (string, error) {
 	if cfg.APIKey != "" {
 		return cfg.APIKey, nil
 	}
+	// If there's exactly one profile and no default key, use it automatically
+	if len(cfg.Profiles) == 1 {
+		for _, p := range cfg.Profiles {
+			if p.APIKey != "" {
+				return p.APIKey, nil
+			}
+		}
+	}
 	return "", fmt.Errorf("API key not set. Provide --api-key, set %s, or run `%s configure --api-key <key>`", EnvAPIKey, CLIName)
 }
 
