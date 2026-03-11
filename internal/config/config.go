@@ -131,6 +131,14 @@ func ResolveAPIKey(flagValue string, profile string) (string, error) {
 			}
 		}
 	}
+	// Multiple profiles exist but none selected — list them
+	if len(cfg.Profiles) > 1 {
+		names := make([]string, 0, len(cfg.Profiles))
+		for name := range cfg.Profiles {
+			names = append(names, name)
+		}
+		return "", fmt.Errorf("multiple profiles configured: %s. Use --profile <name> or set %s", strings.Join(names, ", "), EnvProfile)
+	}
 	return "", fmt.Errorf("API key not set. Provide --api-key, set %s, or run `%s configure --api-key <key>`", EnvAPIKey, CLIName)
 }
 
