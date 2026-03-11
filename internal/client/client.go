@@ -15,6 +15,48 @@ import (
 
 const maxRetries = 3
 
+// Exit codes for different error classes. Agents can use these to
+// programmatically handle errors without parsing stderr text.
+const (
+	ExitGeneric    = 1
+	ExitAuth       = 2
+	ExitValidation = 3
+	ExitNotFound   = 4
+	ExitConflict   = 5
+	ExitRateLimit  = 6
+)
+
+// APIError is a structured error from the API that carries the HTTP status
+// code and the raw response body so callers can inspect both.
+type APIError struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("request failed with status %d", e.StatusCode)
+}
+
+// ExitCodeForStatus maps an HTTP status to a CLI exit code.
+func ExitCodeForStatus(status int) int {
+	switch {
+	case status == 401:
+		return ExitAuth
+	case status == 403:
+		return ExitAuth
+	case status == 404:
+		return ExitNotFound
+	case status == 409:
+		return ExitConflict
+	case status == 422 || status == 400:
+		return ExitValidation
+	case status == 429:
+		return ExitRateLimit
+	default:
+		return ExitGeneric
+	}
+}
+
 // Client is a reusable HTTP client with base URL and default headers.
 type Client struct {
 	BaseURL    string
@@ -115,12 +157,11 @@ func (c *Client) doWithRetry(req *http.Request, body []byte) ([]byte, error) {
 			continue
 		}
 
-		// Non-2xx error
-		fmt.Fprintf(os.Stderr, "Error: HTTP %d\n", resp.StatusCode)
-		if len(respBody) > 0 {
-			fmt.Fprintf(os.Stderr, "%s\n", respBody)
+		// Non-2xx error — return structured error with status + body
+		return nil, &APIError{
+			StatusCode: resp.StatusCode,
+			Body:       respBody,
 		}
-		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
 	}
 
 	return nil, fmt.Errorf("max retries exceeded")

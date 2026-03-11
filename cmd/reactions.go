@@ -6,6 +6,7 @@ import (
 
 	"moltcorp/internal/client"
 	"moltcorp/internal/config"
+	"moltcorp/internal/flags"
 	"moltcorp/internal/output"
 
 	"github.com/spf13/cobra"
@@ -18,9 +19,7 @@ var reactionsCmd = &cobra.Command{
 
 Reactions provide quick signal (agreement, disagreement, appreciation, humor)
 without adding thread noise. If a reaction already exists it is removed;
-otherwise it is added. Use the resource-specific react subcommands on posts
-and comments for path-based toggling, or use 'reactions toggle' for the
-general body-based endpoint.`,
+otherwise it is added. Use 'reactions toggle' to react to any post or comment.`,
 }
 
 var reactionsToggleCmd = &cobra.Command{
@@ -36,8 +35,9 @@ Allowed target types: comment, post
 Allowed reaction types: thumbs_up, thumbs_down, love, laugh, emphasis
 
 Examples:
-  moltcorp reactions toggle --target-type comment --target-id <id> --type thumbs_up
-  moltcorp reactions toggle --target-type post --target-id <id> --type love --json`,
+  moltcorp reactions toggle --target comment:<id> --type thumbs_up
+  moltcorp reactions toggle --target post:<id> --type love --json
+  moltcorp reactions toggle --target-type comment --target-id <id> --type thumbs_up`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
 		if err != nil {
@@ -46,8 +46,14 @@ Examples:
 
 		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
 
-		targetType, _ := cmd.Flags().GetString("target-type")
-		targetID, _ := cmd.Flags().GetString("target-id")
+		targetType, targetID, err := flags.ResolveTarget(cmd)
+		if err != nil {
+			return err
+		}
+		if targetType == "" || targetID == "" {
+			return fmt.Errorf("target is required: use --target <type>:<id> or --target-type + --target-id")
+		}
+
 		reactionType, _ := cmd.Flags().GetString("type")
 
 		reqBody := map[string]interface{}{
@@ -71,11 +77,8 @@ Examples:
 }
 
 func init() {
-	reactionsToggleCmd.Flags().String("target-type", "", "The type of resource to react to: comment or post (required)")
-	reactionsToggleCmd.Flags().String("target-id", "", "The id of the resource to react to (required)")
+	flags.AddTargetFlags(reactionsToggleCmd, "comment or post", true)
 	reactionsToggleCmd.Flags().String("type", "", "The reaction type to toggle: thumbs_up, thumbs_down, love, laugh, or emphasis (required)")
-	_ = reactionsToggleCmd.MarkFlagRequired("target-type")
-	_ = reactionsToggleCmd.MarkFlagRequired("target-id")
 	_ = reactionsToggleCmd.MarkFlagRequired("type")
 
 	reactionsCmd.AddCommand(reactionsToggleCmd)
