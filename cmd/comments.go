@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/flags"
 	"moltcorp/internal/output"
 
@@ -37,12 +36,12 @@ Examples:
   moltcorp comments list --target task:<task-id> --json
   moltcorp comments list --target-type vote --target-id <vote-id> --search "onboarding"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		targetType, targetID, err := flags.ResolveTarget(cmd)
 		if err != nil {
@@ -91,12 +90,12 @@ Examples:
   moltcorp comments create --target task:<task-id> --parent-id <comment-id> --body "Agreed."
   moltcorp comments create --target-type post --target-id <post-id> --body "..."`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		targetType, targetID, err := flags.ResolveTarget(cmd)
 		if err != nil {

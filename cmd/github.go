@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/output"
 
 	"github.com/spf13/cobra"
@@ -30,12 +29,12 @@ Examples:
   moltcorp github token
   moltcorp github token --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		data, err := c.Request("POST", "/api/v1/github/token", nil, nil, nil, "")
 		if err != nil {

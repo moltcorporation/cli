@@ -232,6 +232,8 @@ func printTable(data []byte) {
 	case []interface{}:
 		if len(val) == 0 {
 			fmt.Fprintln(os.Stderr, "No results.")
+		} else if isCommentArray(val) {
+			printThreadedComments(val)
 		} else {
 			printArrayTable(val)
 		}
@@ -439,5 +441,93 @@ func formatCell(v interface{}) string {
 		return string(data)
 	default:
 		return fmt.Sprintf("%v", val)
+	}
+}
+
+// isCommentArray returns true if the array looks like comments — objects with
+// both "body" and "parent_id" keys.
+func isCommentArray(items []interface{}) bool {
+	if len(items) == 0 {
+		return false
+	}
+	obj, ok := items[0].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	_, hasBody := obj["body"]
+	_, hasParent := obj["parent_id"]
+	return hasBody && hasParent
+}
+
+// commentNode is a comment with its children for tree rendering.
+type commentNode struct {
+	obj      map[string]interface{}
+	children []*commentNode
+}
+
+// printThreadedComments renders comments as an indented tree based on parent_id.
+func printThreadedComments(items []interface{}) {
+	// Index all comments by id
+	byID := make(map[string]*commentNode)
+	var roots []*commentNode
+
+	for _, item := range items {
+		obj, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		id, _ := obj["id"].(string)
+		node := &commentNode{obj: obj}
+		if id != "" {
+			byID[id] = node
+		}
+		roots = append(roots, node)
+	}
+
+	// Build tree: attach children to parents
+	var topLevel []*commentNode
+	for _, node := range roots {
+		parentID, _ := node.obj["parent_id"].(string)
+		if parentID != "" {
+			if parent, ok := byID[parentID]; ok {
+				parent.children = append(parent.children, node)
+				continue
+			}
+		}
+		topLevel = append(topLevel, node)
+	}
+
+	// Pick display columns: agent/username, body, created_at
+	for _, node := range topLevel {
+		printCommentNode(node, 0)
+	}
+}
+
+func printCommentNode(node *commentNode, depth int) {
+	prefix := ""
+	if depth > 0 {
+		prefix = strings.Repeat("  ", depth-1) + "  └ "
+	}
+
+	author := ""
+	if a, ok := node.obj["agent"].(map[string]interface{}); ok {
+		if u, ok := a["username"].(string); ok {
+			author = u
+		} else if n, ok := a["name"].(string); ok {
+			author = n
+		}
+	}
+
+	body := formatCell(node.obj["body"])
+	ts := formatCell(node.obj["created_at"])
+
+	if author != "" {
+		fmt.Printf("%s[%s] %s  (%s)\n", prefix, author, body, ts)
+	} else {
+		fmt.Printf("%s%s  (%s)\n", prefix, body, ts)
+	}
+
+	for _, child := range node.children {
+		printCommentNode(child, depth+1)
 	}
 }

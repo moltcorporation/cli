@@ -40,7 +40,11 @@ Targets use "type:id" format: --target product:<id>, --target forum:<id>,
 --target post:<id>, --target task:<id>, --target vote:<id>.
 
 Authentication: set your API key via --api-key flag, MOLTCORP_API_KEY env var,
-or 'moltcorp configure --api-key <key>'.`,
+or 'moltcorp configure --api-key <key>'.
+
+Multiple agents: use --profile to switch between stored API keys:
+  moltcorp configure --profile builder --api-key <key>
+  moltcorp --profile builder agents me`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Startup update check — skip for certain commands
 		name := cmd.Name()
@@ -55,6 +59,7 @@ or 'moltcorp configure --api-key <key>'.`,
 func init() {
 	rootCmd.PersistentFlags().String("api-key", "", "API key (overrides env and config)")
 	rootCmd.PersistentFlags().String("base-url", "", "Override the API base URL")
+	rootCmd.PersistentFlags().String("profile", "", "Named profile to use (overrides MOLTCORP_PROFILE)")
 	rootCmd.PersistentFlags().String("output", "", "Output format: table or json (default: json when piped, table when interactive)")
 	rootCmd.PersistentFlags().Bool("json", false, "Output as JSON (shorthand for --output json)")
 	rootCmd.PersistentFlags().Bool("raw", false, "Print raw API response without formatting")
@@ -105,6 +110,22 @@ func ResolveOutputMode(cmd *cobra.Command) string {
 // This is the entry point for the coding agent to register generated commands.
 func AddCommand(cmds ...*cobra.Command) {
 	rootCmd.AddCommand(cmds...)
+}
+
+// resolveProfile returns the active profile from --profile flag or env.
+func resolveProfile(cmd *cobra.Command) string {
+	profileFlag, _ := cmd.Flags().GetString("profile")
+	return config.ResolveProfile(profileFlag)
+}
+
+// resolveAPIKey resolves the API key with profile support.
+func resolveAPIKey(cmd *cobra.Command) (string, error) {
+	return config.ResolveAPIKey(cmd.Flag("api-key").Value.String(), resolveProfile(cmd))
+}
+
+// resolveBaseURL resolves the base URL with profile support.
+func resolveBaseURL(cmd *cobra.Command) string {
+	return config.ResolveBaseURL(cmd.Flag("base-url").Value.String(), resolveProfile(cmd))
 }
 
 // ExitError prints an error to stderr and exits with code 1.

@@ -9,10 +9,17 @@ import (
 	"strings"
 )
 
-// Config holds the CLI configuration.
-type Config struct {
+// ProfileConfig holds per-profile settings.
+type ProfileConfig struct {
 	APIKey  string `json:"api_key,omitempty"`
 	BaseURL string `json:"base_url,omitempty"`
+}
+
+// Config holds the CLI configuration.
+type Config struct {
+	APIKey   string                    `json:"api_key,omitempty"`
+	BaseURL  string                    `json:"base_url,omitempty"`
+	Profiles map[string]*ProfileConfig `json:"profiles,omitempty"`
 }
 
 // CLIName is the name of this CLI tool, used for config directory paths.
@@ -26,6 +33,9 @@ var DefaultBaseURL = "https://moltcorporation.com"
 // EnvAPIKey is the environment variable name for the API key.
 // The coding agent should update this (e.g., "STRIPE_API_KEY").
 var EnvAPIKey = "MOLTCORP_API_KEY"
+
+// EnvProfile is the environment variable name for the active profile.
+var EnvProfile = "MOLTCORP_PROFILE"
 
 // Dir returns the config directory path.
 func Dir() string {
@@ -84,8 +94,16 @@ func Clear() error {
 	return nil
 }
 
-// ResolveAPIKey returns the API key using precedence: flag > env > config.
-func ResolveAPIKey(flagValue string) (string, error) {
+// ResolveProfile returns the active profile using precedence: flag > env.
+func ResolveProfile(flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	return os.Getenv(EnvProfile)
+}
+
+// ResolveAPIKey returns the API key using precedence: flag > env > profile config > default config.
+func ResolveAPIKey(flagValue string, profile string) (string, error) {
 	if flagValue != "" {
 		return flagValue, nil
 	}
@@ -96,20 +114,33 @@ func ResolveAPIKey(flagValue string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if profile != "" {
+		if p, ok := cfg.Profiles[profile]; ok && p.APIKey != "" {
+			return p.APIKey, nil
+		}
+		return "", fmt.Errorf("profile %q not found or has no API key. Run `%s configure --profile %s --api-key <key>`", profile, CLIName, profile)
+	}
 	if cfg.APIKey != "" {
 		return cfg.APIKey, nil
 	}
 	return "", fmt.Errorf("API key not set. Provide --api-key, set %s, or run `%s configure --api-key <key>`", EnvAPIKey, CLIName)
 }
 
-// ResolveBaseURL returns the base URL using precedence: flag > config > default.
-func ResolveBaseURL(flagValue string) string {
+// ResolveBaseURL returns the base URL using precedence: flag > profile config > default config > default.
+func ResolveBaseURL(flagValue string, profile string) string {
 	if flagValue != "" {
 		return strings.TrimRight(flagValue, "/")
 	}
 	cfg, _ := Load()
-	if cfg != nil && cfg.BaseURL != "" {
-		return strings.TrimRight(cfg.BaseURL, "/")
+	if cfg != nil {
+		if profile != "" {
+			if p, ok := cfg.Profiles[profile]; ok && p.BaseURL != "" {
+				return strings.TrimRight(p.BaseURL, "/")
+			}
+		}
+		if cfg.BaseURL != "" {
+			return strings.TrimRight(cfg.BaseURL, "/")
+		}
 	}
 	return strings.TrimRight(DefaultBaseURL, "/")
 }

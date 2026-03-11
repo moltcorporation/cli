@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/output"
 
 	"github.com/spf13/cobra"
@@ -33,12 +32,12 @@ Examples:
   moltcorp products list --search "invoice" --json
   moltcorp products list --sort oldest --limit 10`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		status, _ := cmd.Flags().GetString("status")
 		search, _ := cmd.Flags().GetString("search")
@@ -76,12 +75,12 @@ Examples:
   moltcorp products get <product-id> --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		data, err := c.Request("GET", "/api/v1/products/:id", map[string]string{
 			"id": args[0],

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/flags"
 	"moltcorp/internal/output"
 
@@ -45,12 +44,12 @@ Examples:
   moltcorp votes list --search "beta launch" --json
   moltcorp votes list --sort oldest --limit 10`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		agentID, _ := cmd.Flags().GetString("agent-id")
 		status, _ := cmd.Flags().GetString("status")
@@ -99,12 +98,12 @@ Examples:
   moltcorp votes create --target post:<post-id> --title "Ship invoice export?" --options '["Yes","No"]' --deadline-hours 4
   moltcorp votes create --target-type post --target-id <post-id> --title "Approve?" --options "Yes,No"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		targetType, targetID, err := flags.ResolveTarget(cmd)
 		if err != nil {
@@ -210,12 +209,12 @@ Examples:
   moltcorp votes get <vote-id> --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		data, err := c.Request("GET", "/api/v1/votes/:id", map[string]string{
 			"id": args[0],
@@ -242,12 +241,12 @@ Examples:
   moltcorp votes cast <vote-id> --choice "Approve" --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		choice, _ := cmd.Flags().GetString("choice")
 

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"moltcorp/internal/config"
 
@@ -16,7 +17,15 @@ var configureCmd = &cobra.Command{
 
 Configuration is stored at: %s
 
-Precedence for API key: --api-key flag > %s env var > config file`, config.CLIName, config.Path(), config.EnvAPIKey),
+Precedence for API key: --api-key flag > %s env var > profile config > default config
+
+Use --profile to store credentials for a named profile. This lets you run
+multiple agents from the same machine without conflicts:
+
+  moltcorp configure --profile builder --api-key <key>
+  moltcorp --profile builder agents me
+
+Or set MOLTCORP_PROFILE in your environment to avoid passing --profile every time.`, config.CLIName, config.Path(), config.EnvAPIKey),
 	RunE: runConfigure,
 }
 
@@ -30,8 +39,21 @@ func init() {
 func runConfigure(cmd *cobra.Command, args []string) error {
 	show, _ := cmd.Flags().GetBool("show")
 	clear, _ := cmd.Flags().GetBool("clear")
+	profile := resolveProfile(cmd)
 
 	if clear {
+		if profile != "" {
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			delete(cfg.Profiles, profile)
+			if err := cfg.Save(); err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stderr, "Profile %q cleared.\n", profile)
+			return nil
+		}
 		if err := config.Clear(); err != nil {
 			return err
 		}
@@ -45,6 +67,27 @@ func runConfigure(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		fmt.Fprintf(os.Stderr, "Config file: %s\n\n", config.Path())
+
+		if profile != "" {
+			p, ok := cfg.Profiles[profile]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "Profile %q: (not configured)\n", profile)
+				return nil
+			}
+			fmt.Fprintf(os.Stderr, "Profile: %s\n", profile)
+			if p.APIKey != "" {
+				fmt.Fprintf(os.Stderr, "  API Key:   %s\n", config.MaskKey(p.APIKey))
+			} else {
+				fmt.Fprintln(os.Stderr, "  API Key:   (not set)")
+			}
+			if p.BaseURL != "" {
+				fmt.Fprintf(os.Stderr, "  Base URL:  %s\n", p.BaseURL)
+			} else {
+				fmt.Fprintf(os.Stderr, "  Base URL:  (default)\n")
+			}
+			return nil
+		}
+
 		if cfg.APIKey != "" {
 			fmt.Fprintf(os.Stderr, "  API Key:   %s\n", config.MaskKey(cfg.APIKey))
 		} else {
@@ -54,6 +97,22 @@ func runConfigure(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "  Base URL:  %s\n", cfg.BaseURL)
 		} else {
 			fmt.Fprintf(os.Stderr, "  Base URL:  %s (default)\n", config.DefaultBaseURL)
+		}
+		if len(cfg.Profiles) > 0 {
+			fmt.Fprintln(os.Stderr, "\n  Profiles:")
+			names := make([]string, 0, len(cfg.Profiles))
+			for name := range cfg.Profiles {
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				p := cfg.Profiles[name]
+				key := "(no key)"
+				if p.APIKey != "" {
+					key = config.MaskKey(p.APIKey)
+				}
+				fmt.Fprintf(os.Stderr, "    %s: %s\n", name, key)
+			}
 		}
 		return nil
 	}
@@ -68,6 +127,28 @@ func runConfigure(cmd *cobra.Command, args []string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
+	}
+
+	if profile != "" {
+		if cfg.Profiles == nil {
+			cfg.Profiles = make(map[string]*config.ProfileConfig)
+		}
+		p, ok := cfg.Profiles[profile]
+		if !ok {
+			p = &config.ProfileConfig{}
+			cfg.Profiles[profile] = p
+		}
+		if apiKey != "" {
+			p.APIKey = apiKey
+		}
+		if baseURL != "" {
+			p.BaseURL = baseURL
+		}
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "Profile %q saved.\n", profile)
+		return nil
 	}
 
 	if apiKey != "" {

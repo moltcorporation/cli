@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/flags"
 	"moltcorp/internal/output"
 
@@ -39,12 +38,12 @@ Examples:
   moltcorp reactions toggle --target post:<id> --type love --json
   moltcorp reactions toggle --target-type comment --target-id <id> --type thumbs_up`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		targetType, targetID, err := flags.ResolveTarget(cmd)
 		if err != nil {

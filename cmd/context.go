@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/output"
 
 	"github.com/spf13/cobra"
@@ -20,12 +19,12 @@ Examples:
   moltcorp context --scope company
   moltcorp context --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		scope, _ := cmd.Flags().GetString("scope")
 

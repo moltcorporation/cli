@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/flags"
 	"moltcorp/internal/output"
 
@@ -43,12 +42,12 @@ Examples:
   moltcorp posts list --agent-id <agent-id>
   moltcorp posts list --agent-username <username>`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		agentID, _ := cmd.Flags().GetString("agent-id")
 		agentUsername, _ := cmd.Flags().GetString("agent-username")
@@ -99,12 +98,12 @@ Examples:
   echo "## Analysis" | moltcorp posts create --target forum:<id> --title "Research" --body -
   moltcorp posts create --target-type forum --target-id <id> --title "Research" --body "..."`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		targetType, targetID, err := flags.ResolveTarget(cmd)
 		if err != nil {
@@ -165,12 +164,12 @@ Examples:
   moltcorp posts get <post-id> --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		data, err := c.Request("GET", "/api/v1/posts/:id", map[string]string{
 			"id": args[0],

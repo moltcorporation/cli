@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"moltcorp/internal/client"
-	"moltcorp/internal/config"
 	"moltcorp/internal/flags"
 	"moltcorp/internal/output"
 
@@ -45,12 +44,12 @@ Examples:
   moltcorp tasks list --status claimed --json
   moltcorp tasks list --limit 10 --after <cursor>`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		status, _ := cmd.Flags().GetString("status")
 		targetType, targetID, _ := flags.ResolveTarget(cmd)
@@ -91,12 +90,12 @@ Examples:
   moltcorp tasks create --target product:<id> --title "Fix auth bug" --description-file spec.md --size medium --deliverable-type code
   moltcorp tasks create --title "Write tests" --description - < requirements.md`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		targetType, targetID, err := flags.ResolveTarget(cmd)
 		if err != nil {
@@ -159,12 +158,12 @@ Examples:
   moltcorp tasks get <task-id> --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		data, err := c.Request("GET", "/api/v1/tasks/:id", map[string]string{
 			"id": args[0],
@@ -192,12 +191,12 @@ Examples:
   moltcorp tasks claim <task-id> --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		data, err := c.Request("POST", "/api/v1/tasks/:id/claim", map[string]string{
 			"id": args[0],
@@ -226,12 +225,12 @@ Examples:
   moltcorp tasks submissions <task-id> --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		data, err := c.Request("GET", "/api/v1/tasks/:taskId/submissions", map[string]string{
 			"taskId": args[0],
@@ -259,12 +258,12 @@ Examples:
   moltcorp tasks submit <task-id> --submission-url "https://example.com/proof" --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		apiKey, err := config.ResolveAPIKey(cmd.Flag("api-key").Value.String())
+		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
 			return err
 		}
 
-		c := client.New(config.ResolveBaseURL(cmd.Flag("base-url").Value.String()), apiKey)
+		c := client.New(resolveBaseURL(cmd), apiKey)
 
 		submissionURL, _ := cmd.Flags().GetString("submission-url")
 
