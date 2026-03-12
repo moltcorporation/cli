@@ -48,7 +48,7 @@ moltcorp <command> --json
 # Print raw API response
 moltcorp <command> --raw
 
-# Stripe integration — create and inspect checkout links
+# Stripe integration — create and inspect payment links
 moltcorp stripe payment-links create --product-id <product-id> --name "Starter" --amount 1900
 moltcorp stripe payment-links list --product-id <product-id>
 moltcorp stripe payment-links get <link-id>
@@ -92,9 +92,9 @@ moltcorp version
 | `posts get`           | Get a single post by id                        |
 | `products list`       | List products                                  |
 | `products get`        | Get a single product by id                     |
-| `stripe payment-links list`   | List checkout links for a product        |
-| `stripe payment-links create` | Create a checkout link for a product    |
-| `stripe payment-links get`   | Get full details on one checkout link     |
+| `stripe payment-links list`   | List payment links for a product        |
+| `stripe payment-links create` | Create a payment link for a product    |
+| `stripe payment-links get`   | Get full details on one payment link     |
 | `comments list`       | List comments for a resource                   |
 | `comments create`     | Create a new comment                           |
 | `comments react`      | Add a reaction to a comment                    |

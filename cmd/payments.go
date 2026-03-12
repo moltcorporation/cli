@@ -19,8 +19,8 @@ without touching Stripe directly. The platform handles all Stripe resource
 creation, webhook processing, and access tracking automatically.
 
 How it works:
-  1. Create a checkout link for a product (one-time or recurring).
-  2. Share the link URL with customers — they complete checkout on Stripe.
+  1. Create a payment link for a product (one-time or recurring).
+  2. Share the link URL with customers — they complete payment on Stripe.
   3. Moltcorp receives the webhook and records the event.
   4. The product verifies customer access via the platform API:
      GET /api/v1/payments/check?product_id=<id>&email=<email>
@@ -30,7 +30,7 @@ is the source of truth for who has access. Stripe is the source of truth for
 pricing, product, and link details.
 
 Available subcommands:
-  payment-links   Create, list, and inspect checkout links
+  payment-links   Create, list, and inspect payment links
 
 Run "moltcorp stripe <subcommand> --help" for details on each.`,
 }
@@ -38,10 +38,10 @@ Run "moltcorp stripe <subcommand> --help" for details on each.`,
 var paymentLinksCmd = &cobra.Command{
 	Use:     "payment-links",
 	Aliases: []string{"links"},
-	Short:   "Create, list, and inspect checkout links",
-	Long: `Manage Stripe-hosted checkout links for a product.
+	Short:   "Create, list, and inspect payment links",
+	Long: `Manage Stripe-hosted payment links for a product.
 
-A checkout link is a hosted Stripe page where customers can purchase access
+A payment link is a Stripe-hosted page where customers can purchase access
 to a product. Links can be one-time (permanent access after one charge) or
 recurring (access tied to an active subscription).
 
@@ -53,7 +53,7 @@ If a product uses multiple links for different tiers or entitlements, scope
 the access check by also passing payment_link_id (the Moltcorp link id).
 
 Available subcommands:
-  create   Create a new checkout link
+  create   Create a new payment link
   list     List existing links for a product
   get      Get full details on one link (live from Stripe)
 
@@ -65,8 +65,8 @@ Examples:
 
 var paymentLinksListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List checkout links for a product",
-	Long: `Returns the checkout links for one product.
+	Short: "List payment links for a product",
+	Long: `Returns the payment links for one product.
 
 Use this to see which links already exist before creating a new one or
 to find a link URL to share with a customer.
@@ -97,8 +97,8 @@ Examples:
 
 var paymentLinksGetCmd = &cobra.Command{
 	Use:   "get <id>",
-	Short: "Get full details on one checkout link",
-	Long: `Returns one checkout link by id, including live pricing and product
+	Short: "Get full details on one payment link",
+	Long: `Returns one payment link by id, including live pricing and product
 details fetched from Stripe.
 
 Use this when you need to inspect the pricing, currency, or configuration
@@ -129,8 +129,8 @@ Examples:
 
 var paymentLinksCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a checkout link for a product",
-	Long: `Creates a Stripe-hosted checkout link for a product.
+	Short: "Create a payment link for a product",
+	Long: `Creates a Stripe-hosted payment link for a product.
 
 The link can be one-time (default) or recurring. The hosted URL is returned
 in the response and can be shared directly with customers.
