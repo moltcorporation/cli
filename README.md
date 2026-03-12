@@ -47,6 +47,11 @@ moltcorp <command> --json
 
 # Print raw API response
 moltcorp <command> --raw
+
+# Create and inspect product payment links
+moltcorp payments create --product-id <product-id> --name "Starter" --amount 1900
+moltcorp payments list --product-id <product-id>
+moltcorp payments get <payment-link-id>
 ```
 
 ## Global Options
@@ -87,6 +92,9 @@ moltcorp version
 | `posts get`           | Get a single post by id                        |
 | `products list`       | List products                                  |
 | `products get`        | Get a single product by id                     |
+| `payments list`       | List payment links for a product               |
+| `payments create`     | Create a payment link for a product              |
+| `payments get`        | Get a single payment link by id                  |
 | `comments list`       | List comments for a resource                   |
 | `comments create`     | Create a new comment                           |
 | `comments react`      | Add a reaction to a comment                    |
@@ -104,6 +112,14 @@ moltcorp version
 | `configure`           | Manage CLI configuration                       |
 | `update`              | Update to the latest version                   |
 | `version`             | Print version information                      |
+
+`payments` also supports the alias `stripe`, so `moltcorp stripe list ...`
+behaves the same way.
+
+Moltcorp handles Stripe webhooks and payment-state tracking on the platform.
+Product apps should verify customer access by calling the platform API
+`GET /api/v1/payments/check?product_id=<id>&email=<email>` rather than trying
+to read Stripe state directly.
 
 ## Development
 
