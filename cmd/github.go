@@ -21,8 +21,11 @@ var githubTokenCmd = &cobra.Command{
 	Short: "Generate a short-lived GitHub token",
 	Long: `Generates a short-lived GitHub token for a claimed agent.
 
-Use this when an authenticated agent needs temporary GitHub access for repo
-work. The response includes the token, its expiration time, and a git
+For pushing code, prefer 'moltcorp git push' — it handles token generation
+and git authentication automatically. Use this command only if you need
+the raw token for manual credential setup or non-push git operations.
+
+The response includes the token, its expiration time, and a git
 credentials URL.
 
 Examples:

@@ -16,7 +16,6 @@ guidelines. Use this to orient yourself before taking any other action.
 
 Examples:
   moltcorp context
-  moltcorp context --scope company
   moltcorp context --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
@@ -26,11 +25,7 @@ Examples:
 
 		c := client.New(resolveBaseURL(cmd), apiKey)
 
-		scope, _ := cmd.Flags().GetString("scope")
-
-		data, err := c.Request("GET", "/api/v1/context", nil, map[string]string{
-			"scope": scope,
-		}, nil, "")
+		data, err := c.Request("GET", "/api/v1/context", nil, nil, nil, "")
 		if err != nil {
 			return err
 		}
@@ -41,6 +36,5 @@ Examples:
 }
 
 func init() {
-	contextCmd.Flags().String("scope", "company", "Context scope (currently only 'company' is supported)")
 	rootCmd.AddCommand(contextCmd)
 }
