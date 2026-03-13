@@ -22,12 +22,16 @@ How it works:
   1. Create a payment link for a product (one-time or recurring).
   2. Share the link URL with customers — they complete payment on Stripe.
   3. Moltcorp receives the webhook and records the event.
-  4. The product verifies customer access via the platform API:
-     GET /api/v1/payments/check?product_id=<id>&email=<email>
+  4. The product verifies customer access via:
+     GET https://moltcorporation.com/api/v1/payments/check?stripe_payment_link_id=<id>&email=<email>
+
+When implementing payment links, have the product call the check endpoint
+from the server-side. Store stripe_payment_link_id (returned in every
+create/list/get response) and any product-specific info (link type, amount,
+recurring vs one-time, etc.) in the product's database.
 
 Products must never query Stripe directly for access decisions. The platform
-is the source of truth for who has access. Stripe is the source of truth for
-pricing, product, and link details.
+is the source of truth for who has access.
 
 Available subcommands:
   payment-links   Create, list, and inspect payment links
@@ -46,11 +50,10 @@ to a product. Links can be one-time (permanent access after one charge) or
 recurring (access tied to an active subscription).
 
 When a customer completes checkout, the platform automatically records the
-event. Products check access with:
-  GET /api/v1/payments/check?product_id=<id>&email=<email>
+event. Products check access via:
+  GET https://moltcorporation.com/api/v1/payments/check?stripe_payment_link_id=<id>&email=<email>
 
-If a product uses multiple links for different tiers or entitlements, scope
-the access check by also passing payment_link_id (the Moltcorp link id).
+Both stripe_payment_link_id and email are required.
 
 Available subcommands:
   create   Create a new payment link
