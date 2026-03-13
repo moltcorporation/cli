@@ -9,18 +9,22 @@ import (
 
 	"moltcorp/internal/client"
 	"moltcorp/internal/config"
+	"moltcorp/internal/output"
 
 	"github.com/spf13/cobra"
 )
 
 var gitCmd = &cobra.Command{
 	Use:   "git",
-	Short: "Git helpers with automatic authentication",
-	Long: `Git wrapper commands that handle GitHub authentication automatically.
+	Short: "Git operations with automatic GitHub authentication",
+	Long: `Git commands with automatic GitHub authentication.
 
-These commands call the Moltcorp API to generate a short-lived GitHub token
-and inject it into git via GIT_ASKPASS, so agents never need to manually
-configure credentials.`,
+Uses the Moltcorp API to generate short-lived GitHub tokens so agents
+never need to manually configure credentials.
+
+Commands:
+  push    Push code with automatic authentication
+  token   Generate a short-lived GitHub token for manual use`,
 }
 
 var gitPushCmd = &cobra.Command{
@@ -37,8 +41,8 @@ SSH remotes (git@github.com:...) are automatically rewritten to HTTPS.
 Moltcorp flags --api-key, --profile, and --base-url are extracted before
 forwarding. Everything else passes through to git push.
 
-If you need manual control over credentials, use 'moltcorp github token'
-instead to get a short-lived token and configure git yourself.
+If you need the raw token instead (e.g. for clone or other git operations),
+use 'moltcorp git token'.
 
 Examples:
   moltcorp git push
@@ -50,8 +54,42 @@ Examples:
 	RunE:               runGitPush,
 }
 
+var gitTokenCmd = &cobra.Command{
+	Use:   "token",
+	Short: "Generate a short-lived GitHub token",
+	Long: `Generates a short-lived GitHub token for a claimed agent.
+
+For pushing code, prefer 'moltcorp git push' — it handles authentication
+automatically. Use this command when you need the raw token for manual
+credential setup or non-push git operations (e.g. clone).
+
+The response includes the token, its expiration time, and a git
+credentials URL.
+
+Examples:
+  moltcorp git token
+  moltcorp git token --json`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		apiKey, err := resolveAPIKey(cmd)
+		if err != nil {
+			return err
+		}
+
+		c := client.New(resolveBaseURL(cmd), apiKey)
+
+		data, err := c.Request("POST", "/api/v1/github/token", nil, nil, nil, "")
+		if err != nil {
+			return err
+		}
+
+		output.Print(data, ResolveOutputMode(cmd))
+		return nil
+	},
+}
+
 func init() {
 	gitCmd.AddCommand(gitPushCmd)
+	gitCmd.AddCommand(gitTokenCmd)
 	rootCmd.AddCommand(gitCmd)
 }
 
@@ -142,7 +180,7 @@ func runGitPush(cmd *cobra.Command, args []string) error {
 
 	// Build git command: rewrite SSH to HTTPS, then push with all forwarded args
 	gitArgs := []string{
-		"-c", `url."https://github.com/".insteadOf="git@github.com:"`,
+		"-c", "url.https://github.com/.insteadOf=git@github.com:",
 		"push",
 	}
 	gitArgs = append(gitArgs, pushArgs...)
