@@ -2,6 +2,8 @@ package output
 
 import (
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -174,5 +176,152 @@ func TestExtractID_Direct(t *testing.T) {
 	id := ExtractID(data)
 	if id != "direct123" {
 		t.Errorf("expected 'direct123', got %q", id)
+	}
+}
+
+func TestIsSectionValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected bool
+	}{
+		{"nil", nil, false},
+		{"string", "hello", false},
+		{"number", float64(42), false},
+		{"empty array", []interface{}{}, false},
+		{"string array", []interface{}{"a", "b"}, false},
+		{
+			"array of objects",
+			[]interface{}{
+				map[string]interface{}{"id": "1", "name": "A"},
+			},
+			true,
+		},
+		{
+			"small nested object (2 keys)",
+			map[string]interface{}{"name": "X", "username": "x"},
+			false,
+		},
+		{
+			"large nested object (3+ keys)",
+			map[string]interface{}{"a": 1, "b": 2, "c": 3},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isSectionValue(tt.input)
+			if result != tt.expected {
+				t.Errorf("isSectionValue(%v) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestPrintObjectTable_Sections(t *testing.T) {
+	// Context-like response: inline scalars + array-of-objects + nested object
+	obj := map[string]interface{}{
+		"scope":              "company",
+		"summary":            "A summary",
+		"summary_updated_at": "2026-03-15",
+		"guidelines":         "Be helpful",
+		"products": []interface{}{
+			map[string]interface{}{"id": "abc", "name": "Recon", "status": "live"},
+			map[string]interface{}{"id": "def", "name": "Federal", "status": "building"},
+		},
+		"stats": map[string]interface{}{
+			"active_products": float64(3),
+			"approved_tasks":  float64(127),
+			"claimed_agents":  float64(8),
+		},
+	}
+
+	// Capture stdout
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	printObjectTable(obj)
+
+	w.Close()
+	os.Stdout = old
+	var buf [4096]byte
+	n, _ := r.Read(buf[:])
+	output := string(buf[:n])
+
+	// Inline fields should appear (not in a section)
+	if !strings.Contains(output, "scope") || !strings.Contains(output, "company") {
+		t.Errorf("expected inline field 'scope: company' in output:\n%s", output)
+	}
+	if !strings.Contains(output, "guidelines") || !strings.Contains(output, "Be helpful") {
+		t.Errorf("expected inline field 'guidelines' in output:\n%s", output)
+	}
+
+	// Section headers should appear
+	if !strings.Contains(output, "--- products ---") {
+		t.Errorf("expected '--- products ---' section header in output:\n%s", output)
+	}
+	if !strings.Contains(output, "--- stats ---") {
+		t.Errorf("expected '--- stats ---' section header in output:\n%s", output)
+	}
+
+	// Array section should contain IDs (not just names)
+	if !strings.Contains(output, "abc") || !strings.Contains(output, "def") {
+		t.Errorf("expected product IDs 'abc' and 'def' in output:\n%s", output)
+	}
+}
+
+func TestPrintObjectTable_OnlyInline(t *testing.T) {
+	obj := map[string]interface{}{
+		"id":     "abc",
+		"name":   "Test",
+		"status": "active",
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	printObjectTable(obj)
+
+	w.Close()
+	os.Stdout = old
+	var buf [4096]byte
+	n, _ := r.Read(buf[:])
+	output := string(buf[:n])
+
+	// Should have key-value pairs, no section headers
+	if strings.Contains(output, "---") {
+		t.Errorf("expected no section headers for simple object, got:\n%s", output)
+	}
+	if !strings.Contains(output, "abc") || !strings.Contains(output, "Test") {
+		t.Errorf("expected inline values in output:\n%s", output)
+	}
+}
+
+func TestPrintObjectTable_EmptyArrays(t *testing.T) {
+	obj := map[string]interface{}{
+		"id":    "abc",
+		"name":  "Test",
+		"tags":  []interface{}{},
+		"items": []interface{}{},
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	printObjectTable(obj)
+
+	w.Close()
+	os.Stdout = old
+	var buf [4096]byte
+	n, _ := r.Read(buf[:])
+	output := string(buf[:n])
+
+	// Empty arrays should stay inline, not become sections
+	if strings.Contains(output, "---") {
+		t.Errorf("expected no section headers for empty arrays, got:\n%s", output)
 	}
 }

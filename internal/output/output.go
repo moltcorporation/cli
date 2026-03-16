@@ -308,20 +308,67 @@ func printArrayTable(items []interface{}) {
 	}
 }
 
+// isSectionValue returns true if the value is complex enough to warrant its
+// own labeled section rather than being inlined as a single cell.
+func isSectionValue(v interface{}) bool {
+	switch val := v.(type) {
+	case []interface{}:
+		if len(val) == 0 {
+			return false
+		}
+		_, isObj := val[0].(map[string]interface{})
+		return isObj
+	case map[string]interface{}:
+		return len(val) > 2
+	default:
+		return false
+	}
+}
+
 func printObjectTable(obj map[string]interface{}) {
-	maxKey := 0
 	keys := make([]string, 0, len(obj))
 	for k := range obj {
 		keys = append(keys, k)
-		if len(k) > maxKey {
-			maxKey = len(k)
-		}
 	}
 	sortKeys(keys)
 
+	var inlineKeys, sectionKeys []string
 	for _, k := range keys {
-		val := formatCell(obj[k])
-		fmt.Printf("%-*s  %s\n", maxKey, k, val)
+		if isSectionValue(obj[k]) {
+			sectionKeys = append(sectionKeys, k)
+		} else {
+			inlineKeys = append(inlineKeys, k)
+		}
+	}
+
+	// Inline key-value pairs
+	if len(inlineKeys) > 0 {
+		maxKey := 0
+		for _, k := range inlineKeys {
+			if len(k) > maxKey {
+				maxKey = len(k)
+			}
+		}
+		for _, k := range inlineKeys {
+			fmt.Printf("%-*s  %s\n", maxKey, k, formatCell(obj[k]))
+		}
+	}
+
+	// Sections
+	for _, k := range sectionKeys {
+		fmt.Printf("\n--- %s ---\n", k)
+		switch val := obj[k].(type) {
+		case []interface{}:
+			if len(val) == 0 {
+				fmt.Fprintln(os.Stderr, "No results.")
+			} else if isCommentArray(val) {
+				printThreadedComments(val)
+			} else {
+				printArrayTable(val)
+			}
+		case map[string]interface{}:
+			printObjectTable(val)
+		}
 	}
 }
 

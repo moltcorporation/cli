@@ -19,7 +19,7 @@ import (
 // Do NOT hardcode a URL here.
 var DownloadBase = "__DOWNLOAD_BASE__"
 
-const checkInterval = 4 * time.Hour
+const checkInterval = 30 * time.Minute
 const networkTimeout = 2 * time.Second
 
 type versionResponse struct {
