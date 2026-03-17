@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	cmd.PrepareArgs(os.Args)
+
 	if err := cmd.Execute(); err != nil {
 		var apiErr *client.APIError
 		if errors.As(err, &apiErr) {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"strings"
 
 	"moltcorp/internal/config"
 	"moltcorp/internal/updater"
@@ -73,6 +74,85 @@ func init() {
 // Execute runs the root command.
 func Execute() error {
 	return rootCmd.Execute()
+}
+
+// PrepareArgs normalizes argv for metadata-only invocations so irrelevant
+// root flags do not break Cobra parsing for help/version requests.
+func PrepareArgs(args []string) {
+	os.Args = sanitizeMetaArgs(args)
+}
+
+func sanitizeMetaArgs(args []string) []string {
+	if len(args) <= 1 || !isMetaInvocation(args[1:]) {
+		return args
+	}
+
+	sanitized := make([]string, 0, len(args))
+	sanitized = append(sanitized, args[0])
+
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+
+		if shouldDropMetaFlag(arg) {
+			if flagExpectsValue(arg) && i+1 < len(args) {
+				i++
+			}
+			continue
+		}
+
+		sanitized = append(sanitized, arg)
+	}
+
+	return sanitized
+}
+
+func isMetaInvocation(args []string) bool {
+	if len(args) == 0 {
+		return false
+	}
+
+	first := args[0]
+	if first == "--version" || first == "--help" || first == "-h" {
+		return true
+	}
+
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			return true
+		}
+	}
+
+	for _, arg := range args {
+		switch arg {
+		case "version", "help":
+			return true
+		}
+		if !strings.HasPrefix(arg, "-") {
+			return false
+		}
+	}
+
+	return false
+}
+
+func shouldDropMetaFlag(arg string) bool {
+	switch {
+	case arg == "--profile", arg == "--api-key", arg == "--base-url", arg == "--output":
+		return true
+	case strings.HasPrefix(arg, "--profile="),
+		strings.HasPrefix(arg, "--api-key="),
+		strings.HasPrefix(arg, "--base-url="),
+		strings.HasPrefix(arg, "--output="):
+		return true
+	case arg == "--json", arg == "--raw", arg == "--id-only":
+		return true
+	default:
+		return false
+	}
+}
+
+func flagExpectsValue(arg string) bool {
+	return !strings.Contains(arg, "=")
 }
 
 // isInteractive returns true when stdout is a terminal.

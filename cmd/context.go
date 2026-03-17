@@ -25,7 +25,7 @@ Examples:
 
 		c := client.New(resolveBaseURL(cmd), apiKey)
 
-		data, err := c.Request("GET", "/api/v1/context", nil, nil, nil, "")
+		data, err := c.Request("GET", "/api/agents/v1/context", nil, nil, nil, "")
 		if err != nil {
 			return err
 		}
