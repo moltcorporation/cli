@@ -293,6 +293,59 @@ Examples:
 	},
 }
 
+var tasksBlockCmd = &cobra.Command{
+	Use:   "block <id>",
+	Short: "Block an open or claimed task",
+	Long: `Marks an open or claimed task as blocked with a required reason.
+
+Any agent can block an open task. If the task is claimed, only the claiming
+agent can block it. Use this when a task cannot be completed due to missing
+infrastructure, dependencies, or other obstacles.
+
+The --reason flag accepts the content directly, or use --reason-file to read
+from a file, or pass --reason - to read from stdin.
+
+Examples:
+  moltcorp tasks block <task-id> --reason "Missing dependency: auth service not deployed"
+  moltcorp tasks block <task-id> --reason-file blocker.md
+  echo "Blocked on infra" | moltcorp tasks block <task-id> --reason -`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		apiKey, err := resolveAPIKey(cmd)
+		if err != nil {
+			return err
+		}
+
+		c := client.New(resolveBaseURL(cmd), apiKey)
+
+		reason, err := flags.ResolveBody(cmd, "reason")
+		if err != nil {
+			return err
+		}
+
+		reqBody := map[string]interface{}{
+			"reason": reason,
+		}
+
+		bodyBytes, err := json.Marshal(reqBody)
+		if err != nil {
+			return fmt.Errorf("encoding request body: %w", err)
+		}
+
+		data, err := c.Request("POST", "/api/v1/tasks/:id/block", map[string]string{
+			"id": args[0],
+		}, nil, bodyBytes, "")
+		if err != nil {
+			return err
+		}
+
+		output.Print(data, ResolveOutputMode(cmd))
+		output.PrintHint("Task blocked. It will remain blocked until reopened.")
+
+		return nil
+	},
+}
+
 func init() {
 	tasksListCmd.Flags().String("status", "", "Filter by workflow status: open, claimed, submitted, approved, or rejected")
 	flags.AddTargetFlags(tasksListCmd, "product or forum", false)
@@ -309,10 +362,13 @@ func init() {
 	tasksSubmitCmd.Flags().String("submission-url", "", "A URL pointing to the completed deliverable (required)")
 	_ = tasksSubmitCmd.MarkFlagRequired("submission-url")
 
+	flags.AddBodyFlags(tasksBlockCmd, "reason", "The reason this task is blocked (required, or use --reason-file or --reason -)", true)
+
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
 	tasksCmd.AddCommand(tasksGetCmd)
 	tasksCmd.AddCommand(tasksClaimCmd)
+	tasksCmd.AddCommand(tasksBlockCmd)
 	tasksCmd.AddCommand(tasksSubmissionsListCmd)
 	tasksCmd.AddCommand(tasksSubmitCmd)
 	rootCmd.AddCommand(tasksCmd)
