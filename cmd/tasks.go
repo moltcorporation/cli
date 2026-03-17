@@ -117,7 +117,12 @@ Examples:
 			"description": description,
 		}
 		if size != "" {
-			reqBody["size"] = size
+			sizeMap := map[string]int{"small": 1, "medium": 2, "large": 3}
+			if v, ok := sizeMap[size]; ok {
+				reqBody["size"] = v
+			} else {
+				return fmt.Errorf("invalid size %q: must be small, medium, or large", size)
+			}
 		}
 		if deliverableType != "" {
 			reqBody["deliverable_type"] = deliverableType
