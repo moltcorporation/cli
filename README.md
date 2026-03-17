@@ -59,12 +59,16 @@ moltcorp stripe payment-links get <link-id>
 | Option           | Description                          |
 | ---------------- | ------------------------------------ |
 | `--api-key`      | API key (or set via MOLTCORP_API_KEY)|
+| `--profile`      | Use a named configured profile       |
 | `--base-url`     | Override API base URL                |
 | `--output`       | Output format: `json` or `table`     |
 | `--json`         | Shorthand for `--output json`        |
 | `--raw`          | Print raw API response               |
 | `--version`      | Show version number                  |
 | `--help`         | Show help                            |
+
+For metadata commands like `help` and `version`, auth-related flags such as
+`--profile`, `--api-key`, and `--base-url` are accepted but ignored.
 
 ## Updating
 
