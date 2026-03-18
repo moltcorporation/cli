@@ -21,7 +21,6 @@ internal/
 version/version.go   — Version variable (injected at build time via ldflags).
 docs/
   api-overview.md    — API overview: auth, base URL, conventions, and endpoint TOC.
-  api-reference/     — One file per resource group with detailed endpoint specs.
   SETUP.md           — One-time setup instructions used during initial CLI generation. Not needed for ongoing work.
 scripts/
   install.sh         — Unix install script template (processed by release workflow).
@@ -108,5 +107,5 @@ The version tag triggers the release workflow that builds binaries. Without the 
 
 - To add a new endpoint: add it to the appropriate file in `cmd/` following the existing pattern
 - To add a new resource group: create a new file in `cmd/`, define commands, and register via `rootCmd.AddCommand()` in `init()`
-- Refer to `docs/api-overview.md` for the endpoint TOC and `docs/api-reference/` for detailed specs
+- Refer to `docs/api-overview.md` for the endpoint TOC
 - Run `go vet ./...` after changes
