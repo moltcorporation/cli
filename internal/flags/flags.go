@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -40,41 +39,39 @@ func ResolveBody(cmd *cobra.Command, flagName string) (string, error) {
 	return direct, nil
 }
 
-// ResolveTarget parses target specification from either:
-//   - Combined --target "type:id" format
-//   - Separate --target-type and --target-id flags
-//
-// Returns (targetType, targetID, error).
-func ResolveTarget(cmd *cobra.Command) (string, string, error) {
-	combined, _ := cmd.Flags().GetString("target")
-	targetType, _ := cmd.Flags().GetString("target-type")
-	targetID, _ := cmd.Flags().GetString("target-id")
-
-	// --target "type:id" takes precedence
-	if combined != "" {
-		parts := strings.SplitN(combined, ":", 2)
-		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return "", "", fmt.Errorf("--target must be in \"type:id\" format (e.g. \"product:abc123\" or \"forum:xyz789\")")
-		}
-		return parts[0], parts[1], nil
+// AddParentFlags registers explicit parent-type flags on a command.
+// parentTypes is e.g. []string{"post"} or []string{"product", "forum"}.
+// If required is true, cobra enforces that exactly one is provided.
+func AddParentFlags(cmd *cobra.Command, parentTypes []string, required bool) {
+	for _, pt := range parentTypes {
+		cmd.Flags().String(pt, "", fmt.Sprintf("The %s id to target", pt))
 	}
 
-	return targetType, targetID, nil
-}
-
-// AddTargetFlags adds --target, --target-type, and --target-id to a command.
-// The typeHelp describes valid types (e.g. "product or forum").
-func AddTargetFlags(cmd *cobra.Command, typeHelp string, required bool) {
-	cmd.Flags().String("target", "", fmt.Sprintf("Target as type:id — e.g. \"%s\"", exampleTarget(typeHelp)))
-	cmd.Flags().String("target-type", "", fmt.Sprintf("(alternative to --target) Target type: %s", typeHelp))
-	cmd.Flags().String("target-id", "", "(alternative to --target) Target resource ID")
+	if len(parentTypes) > 1 {
+		cmd.MarkFlagsMutuallyExclusive(parentTypes...)
+	}
 
 	if required {
-		// Mark the group so Cobra knows at least one target form is needed.
-		// We validate in ResolveTarget instead of using MarkFlagRequired since
-		// the user can provide either --target OR --target-type + --target-id.
-		cmd.MarkFlagsOneRequired("target", "target-type")
+		cmd.MarkFlagsOneRequired(parentTypes...)
 	}
+}
+
+// ResolveParent reads the explicit parent flags and returns (type, id, error).
+// Errors if more than one parent flag is set (should be caught by cobra's
+// mutual exclusion, but checked defensively).
+func ResolveParent(cmd *cobra.Command, parentTypes []string) (string, string, error) {
+	var foundType, foundID string
+	for _, pt := range parentTypes {
+		val, _ := cmd.Flags().GetString(pt)
+		if val != "" {
+			if foundType != "" {
+				return "", "", fmt.Errorf("only one parent flag allowed, got --%s and --%s", foundType, pt)
+			}
+			foundType = pt
+			foundID = val
+		}
+	}
+	return foundType, foundID, nil
 }
 
 // AddBodyFlags adds --body, --body-file, and optionally marks --body as required.
@@ -85,11 +82,4 @@ func AddBodyFlags(cmd *cobra.Command, flagName, help string, required bool) {
 	if required {
 		cmd.MarkFlagsOneRequired(flagName, flagName+"-file")
 	}
-}
-
-func exampleTarget(typeHelp string) string {
-	// Extract first type for the example
-	parts := strings.SplitN(typeHelp, " or ", 2)
-	first := strings.TrimSpace(parts[0])
-	return first + ":<id>"
 }

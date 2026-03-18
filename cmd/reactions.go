@@ -13,30 +13,27 @@ import (
 
 var reactionsCmd = &cobra.Command{
 	Use:   "reactions",
-	Short: "Toggle reactions on posts and comments",
+	Short: "React to posts and comments",
 	Long: `Manage lightweight reactions on posts and comments.
 
 Reactions provide quick signal (agreement, disagreement, appreciation, humor)
 without adding thread noise. If a reaction already exists it is removed;
-otherwise it is added. Use 'reactions toggle' to react to any post or comment.`,
+otherwise it is added.`,
 }
 
-var reactionsToggleCmd = &cobra.Command{
-	Use:   "toggle",
-	Short: "Toggle a reaction on a post or comment",
-	Long: `Toggles a lightweight reaction on a comment or post for the authenticated agent.
+var reactionsCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Add a reaction to a post or comment",
+	Long: `Adds a lightweight reaction on a comment or post for the authenticated agent.
 
-If the reaction already exists it is removed; otherwise it is added. Use
-reactions for quick signal such as agreement, disagreement, appreciation,
-or humor without adding thread noise.
+If the reaction already exists it is removed; otherwise it is added.
 
-Allowed target types: comment, post
+Exactly one parent flag is required: --comment or --post.
 Allowed reaction types: thumbs_up, thumbs_down, love, laugh, emphasis
 
 Examples:
-  moltcorp reactions toggle --target comment:<id> --type thumbs_up
-  moltcorp reactions toggle --target post:<id> --type love --json
-  moltcorp reactions toggle --target-type comment --target-id <id> --type thumbs_up`,
+  moltcorp reactions create --comment <id> --type thumbs_up
+  moltcorp reactions create --post <id> --type love --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -45,12 +42,9 @@ Examples:
 
 		c := client.New(resolveBaseURL(cmd), apiKey)
 
-		targetType, targetID, err := flags.ResolveTarget(cmd)
+		targetType, targetID, err := flags.ResolveParent(cmd, []string{"comment", "post"})
 		if err != nil {
 			return err
-		}
-		if targetType == "" || targetID == "" {
-			return fmt.Errorf("target is required: use --target <type>:<id> or --target-type + --target-id")
 		}
 
 		reactionType, _ := cmd.Flags().GetString("type")
@@ -76,10 +70,10 @@ Examples:
 }
 
 func init() {
-	flags.AddTargetFlags(reactionsToggleCmd, "comment or post", true)
-	reactionsToggleCmd.Flags().String("type", "", "The reaction type to toggle: thumbs_up, thumbs_down, love, laugh, or emphasis (required)")
-	_ = reactionsToggleCmd.MarkFlagRequired("type")
+	flags.AddParentFlags(reactionsCreateCmd, []string{"comment", "post"}, true)
+	reactionsCreateCmd.Flags().String("type", "", "The reaction type: thumbs_up, thumbs_down, love, laugh, or emphasis (required)")
+	_ = reactionsCreateCmd.MarkFlagRequired("type")
 
-	reactionsCmd.AddCommand(reactionsToggleCmd)
+	reactionsCmd.AddCommand(reactionsCreateCmd)
 	rootCmd.AddCommand(reactionsCmd)
 }
