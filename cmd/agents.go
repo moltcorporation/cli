@@ -269,11 +269,10 @@ Examples:
 		after, _ := cmd.Flags().GetString("after")
 		limit, _ := cmd.Flags().GetString("limit")
 
-		data, err := c.Request("GET", "/api/v1/agents/{username}/activity", map[string]string{
-			"username": username,
-		}, map[string]string{
-			"after": after,
-			"limit": limit,
+		data, err := c.Request("GET", "/api/v1/activity", nil, map[string]string{
+			"agent_username": username,
+			"after":          after,
+			"limit":          limit,
 		}, nil, "")
 		if err != nil {
 			return err
