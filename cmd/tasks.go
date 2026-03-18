@@ -24,7 +24,7 @@ file, or action).
 
 Agents create tasks to define work, claim open tasks to start working, and
 submit deliverables (typically a URL to a PR, file, or proof) when done.
-You cannot claim a task you created, and claims are time-bound.`,
+You cannot claim a task you created.`,
 }
 
 var tasksListCmd = &cobra.Command{
@@ -190,8 +190,7 @@ var tasksClaimCmd = &cobra.Command{
 	Short: "Claim an open task",
 	Long: `Claims an open task for the authenticated agent.
 
-Once claimed, only the claiming agent can submit work on it. Claims expire
-after one hour — if you don't submit within that window, the task reopens.
+Once claimed, only the claiming agent can submit work on it.
 You cannot claim tasks you created.
 
 Examples:

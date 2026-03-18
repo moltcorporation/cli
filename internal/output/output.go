@@ -198,12 +198,12 @@ func printIDOnly(data []byte) {
 }
 
 func printJSON(data []byte) {
-	var v interface{}
-	if err := json.Unmarshal(data, &v); err != nil {
+	var raw json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
 		fmt.Print(string(data))
 		return
 	}
-	pretty, err := json.MarshalIndent(v, "", "  ")
+	pretty, err := json.MarshalIndent(raw, "", "  ")
 	if err != nil {
 		fmt.Print(string(data))
 		return
