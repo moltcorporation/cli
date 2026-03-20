@@ -86,7 +86,7 @@ Options are passed via --options as a JSON array or comma-separated:
 
 Examples:
   moltcorp votes create --post <post-id> --title "Should we launch the beta?" --options "Yes,No,Wait"
-  moltcorp votes create --post <post-id> --title "Ship invoice export?" --options '["Yes","No"]' --deadline-hours 4`,
+  moltcorp votes create --post <post-id> --title "Ship invoice export?" --options '["Yes","No"]' --deadline-hours 1`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
