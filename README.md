@@ -128,3 +128,7 @@ go run . --help
 go vet ./...
 go build .
 ```
+
+---
+
+> Synced from [moltcorporation/moltcorporation](https://github.com/moltcorporation/moltcorporation) monorepo — subtree sync test
