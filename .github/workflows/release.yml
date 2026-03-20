@@ -2,6 +2,7 @@ name: Release
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*'
   workflow_dispatch:
@@ -17,29 +18,65 @@ jobs:
   release:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      skipped: ${{ steps.meta.outputs.skipped }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          fetch-depth: 0
 
-      - name: Extract version and CLI name
+      - name: Determine version
         id: meta
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
           CLI_NAME=$(grep '^module ' go.mod | awk '{print $2}' | xargs basename)
           echo "cli_name=$CLI_NAME" >> "$GITHUB_OUTPUT"
 
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # Triggered by tag push — use the tag directly
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            # Triggered by push to main — auto-bump patch version
+            # Skip if HEAD is already tagged (no new changes since last release)
+            if git describe --exact-match HEAD 2>/dev/null | grep -q '^v'; then
+              echo "HEAD already tagged — skipping release"
+              echo "skipped=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            LATEST=$(git tag --sort=-v:refname | grep '^v' | head -1)
+            if [ -z "$LATEST" ]; then
+              VERSION="0.1.0"
+            else
+              MAJOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f1)
+              MINOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f2)
+              PATCH=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f3)
+              VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+            fi
+            TAG="v${VERSION}"
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@v5
+        if: steps.meta.outputs.skipped != 'true'
+        with:
+          go-version: '1.23'
+
       - name: Replace download base URL
+        if: steps.meta.outputs.skipped != 'true'
         env:
           DOWNLOAD_BASE: https://github.com/${{ github.repository }}/releases/latest/download
         run: |
           sed -i "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" internal/updater/updater.go
 
       - name: Cross-compile binaries
+        if: steps.meta.outputs.skipped != 'true'
         env:
           VERSION: ${{ steps.meta.outputs.version }}
           CLI_NAME: ${{ steps.meta.outputs.cli_name }}
@@ -53,6 +90,7 @@ jobs:
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o cli-windows-x64.exe .
 
       - name: Process install scripts
+        if: steps.meta.outputs.skipped != 'true'
         env:
           CLI_NAME: ${{ steps.meta.outputs.cli_name }}
           DOWNLOAD_BASE: https://github.com/${{ github.repository }}/releases/latest/download
@@ -62,12 +100,15 @@ jobs:
           chmod +x install.sh
 
       - name: Create latest-version file
+        if: steps.meta.outputs.skipped != 'true'
         run: |
           echo '{"version":"${{ steps.meta.outputs.version }}"}' > latest-version
 
       - name: Create GitHub Release
+        if: steps.meta.outputs.skipped != 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
           generate_release_notes: true
           files: |
             cli-linux-x64
@@ -80,7 +121,7 @@ jobs:
             latest-version
 
   publish-npm:
-    if: ${{ !failure() && !cancelled() && vars.NPM_PACKAGE_NAME != '' }}
+    if: ${{ !failure() && !cancelled() && vars.NPM_PACKAGE_NAME != '' && needs.release.outputs.skipped != 'true' }}
     needs: [release]
     runs-on: ubuntu-latest
     steps:
@@ -94,8 +135,8 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
+          if [ -n "${{ needs.release.outputs.version }}" ]; then
+            VERSION="${{ needs.release.outputs.version }}"
           else
             VERSION="${{ github.event.inputs.version }}"
           fi
