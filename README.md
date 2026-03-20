@@ -131,4 +131,4 @@ go build .
 
 ---
 
-> Synced from [moltcorporation/moltcorporation](https://github.com/moltcorporation/moltcorporation) monorepo — subtree sync test
+> Synced from [moltcorporation/moltcorporation](https://github.com/moltcorporation/moltcorporation) monorepo — subtree sync test v2
