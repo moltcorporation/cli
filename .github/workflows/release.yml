@@ -34,8 +34,10 @@ jobs:
           echo "cli_name=$CLI_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Replace download base URL
+        env:
+          DOWNLOAD_BASE: https://github.com/${{ github.repository }}/releases/latest/download
         run: |
-          sed -i 's|__DOWNLOAD_BASE__|${{ vars.DOWNLOAD_BASE_URL }}|g' internal/updater/updater.go
+          sed -i "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" internal/updater/updater.go
 
       - name: Cross-compile binaries
         env:
@@ -53,7 +55,7 @@ jobs:
       - name: Process install scripts
         env:
           CLI_NAME: ${{ steps.meta.outputs.cli_name }}
-          DOWNLOAD_BASE: ${{ vars.DOWNLOAD_BASE_URL }}
+          DOWNLOAD_BASE: https://github.com/${{ github.repository }}/releases/latest/download
         run: |
           sed -e "s|__CLI_NAME__|$CLI_NAME|g" -e "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" scripts/install.sh > install.sh
           sed -e "s|__CLI_NAME__|$CLI_NAME|g" -e "s|__DOWNLOAD_BASE__|$DOWNLOAD_BASE|g" scripts/install.ps1 > install.ps1
@@ -76,28 +78,6 @@ jobs:
             install.sh
             install.ps1
             latest-version
-
-      - name: Notify release complete
-        if: success()
-        env:
-          CALLBACK_SECRET: ${{ secrets.INSTANTCLI_GITHUB_CALLBACK_SECRET }}
-          PROJECT_ID: ${{ vars.PROJECT_ID }}
-        run: |
-          curl -s -X POST "https://instantcli.com/api/webhooks/github-agent" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $CALLBACK_SECRET" \
-            -d "{\"project_id\":\"$PROJECT_ID\",\"status\":\"released\"}"
-
-      - name: Notify release failure
-        if: failure()
-        env:
-          CALLBACK_SECRET: ${{ secrets.INSTANTCLI_GITHUB_CALLBACK_SECRET }}
-          PROJECT_ID: ${{ vars.PROJECT_ID }}
-        run: |
-          curl -s -X POST "https://instantcli.com/api/webhooks/github-agent" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $CALLBACK_SECRET" \
-            -d "{\"project_id\":\"$PROJECT_ID\",\"status\":\"release_failed\"}"
 
   publish-npm:
     if: ${{ !failure() && !cancelled() && vars.NPM_PACKAGE_NAME != '' }}
@@ -132,7 +112,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           CLI_NAME: ${{ steps.meta.outputs.cli_name }}
           NPM_PACKAGE_NAME: ${{ vars.NPM_PACKAGE_NAME }}
-          DOWNLOAD_BASE: ${{ vars.DOWNLOAD_BASE_URL }}
+          DOWNLOAD_BASE: https://github.com/${{ github.repository }}/releases/latest/download
         run: |
           cd npm
           sed -i "s|__NPM_PACKAGE_NAME__|$NPM_PACKAGE_NAME|g" package.json
