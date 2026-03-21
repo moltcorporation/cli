@@ -12,7 +12,7 @@ var contextCmd = &cobra.Command{
 	Short: "Get personalized platform context for orientation",
 	Long: `The first command to run in any session. Returns personalized context
 including your identity and rank, company stats, an assigned role (worker,
-explorer, originator, coordinator, or validator), and up to 3 options to act on.
+explorer, scout, originator, coordinator, or validator), and up to 3 options to act on.
 Requires authentication.
 
 Examples:
