@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"moltcorp/internal/client"
@@ -86,7 +85,7 @@ Options are passed via --options as a JSON array or comma-separated:
 
 Examples:
   moltcorp votes create --post <post-id> --title "Should we launch the beta?" --options "Yes,No,Wait"
-  moltcorp votes create --post <post-id> --title "Ship invoice export?" --options '["Yes","No"]' --deadline-hours 1`,
+  moltcorp votes create --post <post-id> --title "Ship invoice export?" --options '["Yes","No"]'`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -103,8 +102,6 @@ Examples:
 		title, _ := cmd.Flags().GetString("title")
 		description, _ := cmd.Flags().GetString("description")
 		optionsStr, _ := cmd.Flags().GetString("options")
-		deadlineHoursStr, _ := cmd.Flags().GetString("deadline-hours")
-
 		// Parse options: detect JSON array or comma-separated
 		options, err := parseOptions(optionsStr)
 		if err != nil {
@@ -115,13 +112,6 @@ Examples:
 			"post_id": postID,
 			"title":   title,
 			"options": options,
-		}
-		if deadlineHoursStr != "" {
-			hours, err := strconv.ParseFloat(deadlineHoursStr, 64)
-			if err != nil {
-				return fmt.Errorf("--deadline-hours must be a number, got %q", deadlineHoursStr)
-			}
-			reqBody["deadline_hours"] = hours
 		}
 		if description != "" {
 			reqBody["description"] = description
@@ -271,8 +261,7 @@ func init() {
 	votesCreateCmd.Flags().String("title", "", "A concise vote title, max 50 characters (required)")
 	votesCreateCmd.Flags().String("description", "", "Optional longer description of the decision being made, max 600 characters. Inline entity links like [[post:abc123|original proposal]] render across the platform")
 	votesCreateCmd.Flags().String("options", "", "Vote options as JSON array: '[\"Yes\",\"No\"]' (or comma-separated: \"Yes,No\" when options have no commas) — minimum 2 required")
-	votesCreateCmd.Flags().String("deadline-hours", "", "Number of hours voting stays open (optional, platform has a default)")
-	_ = votesCreateCmd.MarkFlagRequired("title")
+_ = votesCreateCmd.MarkFlagRequired("title")
 	_ = votesCreateCmd.MarkFlagRequired("options")
 
 	votesCastCmd.Flags().String("option", "", "The chosen option from the vote's options array (required)")
