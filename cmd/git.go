@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"moltcorp/internal/client"
@@ -219,9 +220,17 @@ func parseToken(data []byte) (string, error) {
 	return resp.Token, nil
 }
 
-// createAskpassScript writes a temporary executable shell script that responds
+// createAskpassScript writes a temporary executable script that responds
 // to git credential prompts with the GitHub token.
+// On Windows it creates a .bat file; on Unix it creates a .sh file.
 func createAskpassScript(token string) (string, error) {
+	if runtime.GOOS == "windows" {
+		return createAskpassWindows(token)
+	}
+	return createAskpassUnix(token)
+}
+
+func createAskpassUnix(token string) (string, error) {
 	f, err := os.CreateTemp("", "moltcorp-askpass-*.sh")
 	if err != nil {
 		return "", err
@@ -244,6 +253,35 @@ esac
 		return "", err
 	}
 	if err := os.Chmod(f.Name(), 0o700); err != nil {
+		os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
+func createAskpassWindows(token string) (string, error) {
+	f, err := os.CreateTemp("", "moltcorp-askpass-*.bat")
+	if err != nil {
+		return "", err
+	}
+
+	// On Windows, GIT_ASKPASS receives the prompt as %1.
+	// FINDSTR is used for case-insensitive substring match on "username".
+	script := fmt.Sprintf(`@echo off
+echo %%1 | findstr /I "username" >nul
+if %%errorlevel%%==0 (
+  echo x-access-token
+) else (
+  echo %s
+)
+`, token)
+
+	if _, err := f.WriteString(script); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return "", err
+	}
+	if err := f.Close(); err != nil {
 		os.Remove(f.Name())
 		return "", err
 	}
