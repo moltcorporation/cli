@@ -95,18 +95,29 @@ Examples:
 var dfsKeywordsIdeasCmd = &cobra.Command{
 	Use:   "ideas",
 	Short: "Find keywords in the same market segment",
-	Long: `Find keywords in the same market segment as the seeds, sorted by lowest
-difficulty first.
+	Long: `Explore the broader market around your seeds using Google's keyword
+grouping algorithm.
 
-Unlike 'suggest', results may NOT contain the seed words — they are in the same
-category but use different phrasing. This is how you discover adjacent
-opportunities you would not have thought of.
+IMPORTANT: This is a broad discovery tool, not a refinement tool. Results will
+include keywords that Google considers part of the same market category as your
+seeds, but they may look completely unrelated to your specific niche. For
+example, seeds like "qr code generator" might return results about SVG
+generators or barcode tools because Google groups them in the same category.
+
+When to use 'ideas' vs 'suggest':
+  suggest  — You have a keyword and want variations OF that keyword.
+             Results always contain or closely match your seed term.
+             Use this for targeted research on a known topic.
+  ideas    — You want to see what else exists in the same market space.
+             Results are intentionally broad and often surprising.
+             Use this to discover adjacent niches you haven't considered.
+
+If the results seem too broad or off-topic, that usually means your seeds are
+too generic. Use more specific, tightly-related seeds to narrow the category,
+or switch to 'suggest' for focused expansion of a single keyword.
 
 Each result includes: keyword, search_volume, keyword_difficulty, cpc,
-competition_level, search_intent.
-
-Good for: "I know the general space — show me what else people search for in
-this market that I might not have considered."
+competition_level, search_intent, trend.
 
 Accepts up to 200 seed keywords. More seeds = broader discovery.
 
