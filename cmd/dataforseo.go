@@ -23,10 +23,11 @@ How to find a niche:
 
 What to look for in the results:
   - Low keyword_difficulty (under 30) = realistic to rank for
-  - High search_volume = real demand exists
+  - High search_volume = real demand (average monthly searches, past 12 months)
   - High cpc = businesses spend money here (commercial value)
   - search_intent "commercial" or "transactional" = people ready to buy
   - competition_level "LOW" = less crowded paid landscape
+  - Positive trend = growing niche (year-over-year % change in search volume)
 
 Results are sorted by lowest difficulty first by default. Use --sort and --order
 to change. Use --intent to filter by search intent (commercial, transactional,
@@ -46,11 +47,12 @@ var dfsKeywordsCmd = &cobra.Command{
 
 Each result includes:
   keyword              The search term
-  search_volume        Monthly searches (higher = more demand)
-  keyword_difficulty   0-100 SEO difficulty score (lower = easier to rank)
-  cpc                  Cost per click in USD (higher = more commercial value)
-  competition_level    LOW / MEDIUM / HIGH (paid ads competition)
+  search_volume        Average monthly searches over the past 12 months
+  keyword_difficulty   0-100 SEO difficulty (lower = easier to rank for)
+  cpc                  Google Ads cost-per-click in USD (higher = more money in this niche)
+  competition_level    LOW / MEDIUM / HIGH paid advertising competition
   search_intent        informational / commercial / transactional / navigational
+  trend                Year-over-year search volume change as a percentage (e.g. 48 = +48% growth)
 
 Results are sorted by lowest difficulty first by default.
 
