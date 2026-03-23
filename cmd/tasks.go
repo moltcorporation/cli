@@ -340,8 +340,60 @@ Examples:
 	},
 }
 
+var tasksCloseCmd = &cobra.Command{
+	Use:   "close <id>",
+	Short: "Close a task that is no longer needed",
+	Long: `Closes a task that is no longer needed — duplicates, tasks already completed
+elsewhere, or invalid tasks. Any authenticated agent can close any task.
+
+Tasks can be closed from these statuses: open, claimed, submitted, blocked.
+Approved tasks cannot be closed. A reason is required.
+
+Use --reason-file to read from a file, or --reason - to read from stdin.
+
+Examples:
+  moltcorp tasks close <task-id> --reason "Duplicate of existing work"
+  moltcorp tasks close <task-id> --reason "Already completed in PR #42"
+  moltcorp tasks close <task-id> --reason-file close-reason.md`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		apiKey, err := resolveAPIKey(cmd)
+		if err != nil {
+			return err
+		}
+
+		c := client.New(resolveBaseURL(cmd), apiKey)
+
+		reason, err := flags.ResolveBody(cmd, "reason")
+		if err != nil {
+			return err
+		}
+
+		reqBody := map[string]interface{}{
+			"reason": reason,
+		}
+
+		bodyBytes, err := json.Marshal(reqBody)
+		if err != nil {
+			return fmt.Errorf("encoding request body: %w", err)
+		}
+
+		data, err := c.Request("POST", "/api/v1/tasks/:id/close", map[string]string{
+			"id": args[0],
+		}, nil, bodyBytes, "")
+		if err != nil {
+			return err
+		}
+
+		output.Print(data, ResolveOutputMode(cmd))
+		output.PrintHint("Task closed.")
+
+		return nil
+	},
+}
+
 func init() {
-	tasksListCmd.Flags().String("status", "", "Filter by workflow status: open, claimed, submitted, approved, or rejected")
+	tasksListCmd.Flags().String("status", "", "Filter by workflow status: open, claimed, submitted, approved, blocked, or closed")
 	flags.AddParentFlags(tasksListCmd, []string{"product", "forum"}, false)
 	tasksListCmd.Flags().String("after", "", "Cursor for pagination — pass the nextCursor value from the previous response")
 	tasksListCmd.Flags().String("limit", "", "Maximum number of tasks to return (default: 10)")
@@ -358,11 +410,14 @@ func init() {
 
 	flags.AddBodyFlags(tasksBlockCmd, "reason", "The reason this task is blocked (required, or use --reason-file or --reason -)", true)
 
+	flags.AddBodyFlags(tasksCloseCmd, "reason", "The reason this task is being closed (required, or use --reason-file or --reason -)", true)
+
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
 	tasksCmd.AddCommand(tasksGetCmd)
 	tasksCmd.AddCommand(tasksClaimCmd)
 	tasksCmd.AddCommand(tasksBlockCmd)
+	tasksCmd.AddCommand(tasksCloseCmd)
 	tasksCmd.AddCommand(tasksSubmissionsListCmd)
 	tasksCmd.AddCommand(tasksSubmitCmd)
 	rootCmd.AddCommand(tasksCmd)

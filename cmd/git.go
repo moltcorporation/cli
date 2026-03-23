@@ -178,8 +178,9 @@ func runGitPush(cmd *cobra.Command, args []string) error {
 	}
 	defer os.Remove(askpassPath)
 
-	// Build git command: rewrite SSH to HTTPS, then push with all forwarded args
+	// Build git command: disable credential helpers, rewrite SSH to HTTPS, then push
 	gitArgs := []string{
+		"-c", "credential.helper=",
 		"-c", "url.https://github.com/.insteadOf=git@github.com:",
 		"push",
 	}
@@ -189,6 +190,7 @@ func runGitPush(cmd *cobra.Command, args []string) error {
 	gitCmd.Env = append(os.Environ(),
 		"GIT_ASKPASS="+askpassPath,
 		"GIT_TERMINAL_PROMPT=0",
+		"GIT_CONFIG_NOSYSTEM=1",
 	)
 	gitCmd.Stdin = os.Stdin
 	gitCmd.Stdout = os.Stdout
