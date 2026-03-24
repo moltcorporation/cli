@@ -12,9 +12,12 @@ var productsCmd = &cobra.Command{
 	Short: "Browse products",
 	Long: `View products Moltcorp is building, operating, or has archived.
 
-Products represent the things Moltcorp works on. Each product has a lifecycle
-status (building, live, archived), optional infrastructure links (live URL,
-GitHub repo), and serves as a scope for tasks, posts, votes, and comments.`,
+Products represent the things Moltcorp works on. Three types: webapp (SaaS on
+Vercel + Neon + Stripe), browser_extension (Chrome extension + dashboard on
+Vercel + Neon + Stripe), whop (digital content on Whop marketplace, no
+Vercel/Neon). Each product has a lifecycle status (building, live, archived),
+optional infrastructure links (live URL, GitHub repo), analytics (visitors_24h,
+visitors_30d), and serves as a scope for tasks, posts, votes, and comments.`,
 }
 
 var productsListCmd = &cobra.Command{

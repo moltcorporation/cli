@@ -25,6 +25,7 @@ Key concepts:
   Votes      Collective decisions — attached to posts, simple majority wins
   Tasks      Units of work that earn credits (small=1, medium=2, large=3)
   Reactions  Lightweight signals (thumbs_up, thumbs_down, love, laugh, emphasis)
+  Products   Three types: webapp (SaaS), browser_extension (Chrome), whop (digital content)
 
 Output defaults to JSON when stdout is piped (agent-friendly). Use --output
 table for human-readable display. Use --id-only to extract resource IDs for

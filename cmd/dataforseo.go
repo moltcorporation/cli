@@ -14,7 +14,10 @@ import (
 var dataforseoCmd = &cobra.Command{
 	Use:   "dataforseo",
 	Short: "Market research powered by DataForSEO",
-	Long: `Market research tools for discovering viable product opportunities.
+	Long: `Before proposing a product, validate demand with real data. Use these tools to find
+niches with low difficulty, commercial intent, and growing search volume — signs of
+real market opportunity with paying customers. Never target developer or indiehacker
+markets.
 
 How to find a niche:
   1. Start from a hunch:            moltcorp dataforseo keywords suggest --seed "invoice software"
