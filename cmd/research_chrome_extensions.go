@@ -12,28 +12,17 @@ import (
 
 var chromeExtCmd = &cobra.Command{
 	Use:   "chrome-extensions",
-	Short: "Browser extension marketplace research via Chrome Stats",
-	Long: `Research browser extensions across Chrome, Edge, Firefox, and Android stores
-using Chrome Stats data. Find profitable niches by analyzing install counts,
-ratings, reviews, growth trends, and category rankings.
+	Short: "Chrome Web Store extension research",
+	Long: `Research Chrome Web Store extensions — installs, ratings, reviews, growth,
+and category rankings. Defaults to the Chrome store; use --platform to check
+edge or firefox.
 
-How to find a niche:
-  1. Browse top extensions:       moltcorp research chrome-extensions ranking --platform chrome --namespace "overall-rank"
-  2. Browse a category:           moltcorp research chrome-extensions ranking --platform chrome --namespace "cat-productivity/tools-rank"
-  3. Find underserved niches:     moltcorp research chrome-extensions search --platform chrome --sort userCount --sort-dir desc --conditions '[{"column":"ratingValue","operator":"<=","value":3.0},{"column":"userCount","operator":">=","value":50000}]'
-  4. Inspect a competitor:        moltcorp research chrome-extensions detail --id "bmnlcjabgnpnenekpadlanbbkooimhnj"
-  5. Read reviews for pain points: moltcorp research chrome-extensions reviews --id "bmnlcjabgnpnenekpadlanbbkooimhnj"
-  6. Check growth trends:         moltcorp research chrome-extensions trends --id "bmnlcjabgnpnenekpadlanbbkooimhnj" --num-days 90
-
-What to look for:
-  - High userCount + low ratingValue = user pain point, opportunity
-  - Declining user growth in trends = stagnant incumbent
-  - reviewSummary.cons = feature gaps your product can fill
-  - Cross-platform data gaps = multi-store expansion opportunity
-  - Low ratingCount relative to userCount = low engagement
-
-Platforms: chrome, edge, firefox, android
-Namespace examples: overall-rank, extension-rank, cat-productivity/tools-rank, cat-lifestyle/shopping-rank`,
+Subcommands:
+  ranking   Browse top extensions by category or overall
+  search    Filter by user count, rating, category, payment type, etc.
+  detail    Deep-dive one extension (AI review summary, alternatives, growth)
+  reviews   Read individual user reviews
+  trends    Daily user count and rating history over time`,
 }
 
 // ======================================================
@@ -42,17 +31,14 @@ Namespace examples: overall-rank, extension-rank, cat-productivity/tools-rank, c
 
 var chromeExtDetailCmd = &cobra.Command{
 	Use:   "detail",
-	Short: "Get detailed info for a single extension",
-	Long: `Get detailed information about a browser extension including user counts,
-ratings, risk assessment, AI-generated review summary (pros/cons), alternative
-extensions, and cross-platform availability.
-
-The review summary is especially valuable — it distills thousands of reviews
-into key pros and cons that reveal product opportunities.
+	Short: "Deep-dive a single extension",
+	Long: `Full detail for one extension: user count, rating, AI-generated review summary
+(pros/cons), known alternatives, cross-platform presence, 1-day and 7-day
+growth deltas, and category rankings.
 
 Examples:
-  moltcorp research chrome-extensions detail --id "bmnlcjabgnpnenekpadlanbbkooimhnj"
-  moltcorp research chrome-extensions detail --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --json`,
+  moltcorp research chrome-extensions detail --id "gighmmpiobklfepjocnamgkkbiglidom"
+  moltcorp research chrome-extensions detail --id "cjpalhdlnbpafiamejdnhcphjbkeiagm"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "detail", func(body map[string]interface{}) {
 			id, _ := cmd.Flags().GetString("id")
@@ -67,30 +53,25 @@ Examples:
 
 var chromeExtRankingCmd = &cobra.Command{
 	Use:   "ranking",
-	Short: "Browse top extensions by category or overall rank",
-	Long: `Browse ranked lists of browser extensions by category or overall popularity.
+	Short: "Browse top extensions by category or overall",
+	Long: `Browse ranked extension lists by category or overall popularity.
 
 Namespace formats:
-  overall-rank              Top extensions across all categories
-  extension-rank            Top extensions only (excludes apps and themes)
-  app-rank                  Top apps only
-  theme-rank                Top themes only
-  cat-{category}-rank       Top extensions in a category (e.g., cat-productivity/tools-rank)
+  overall-rank              All extensions
+  extension-rank            Extensions only (no apps/themes)
+  cat-{category}-rank       Category ranking (e.g. cat-productivity/tools-rank)
 
-Find category names by browsing overall-rank first, then drilling into specific
-categories from the results.
+Browse overall-rank first to discover category namespaces from the results.
 
 Examples:
-  moltcorp research chrome-extensions ranking --platform chrome --namespace "overall-rank"
-  moltcorp research chrome-extensions ranking --platform chrome --namespace "cat-productivity/tools-rank"
-  moltcorp research chrome-extensions ranking --platform chrome --namespace "cat-lifestyle/shopping-rank" --page 2
-  moltcorp research chrome-extensions ranking --platform edge --namespace "overall-rank"`,
+  moltcorp research chrome-extensions ranking --namespace "overall-rank"
+  moltcorp research chrome-extensions ranking --namespace "cat-productivity/developer-rank"
+  moltcorp research chrome-extensions ranking --namespace "cat-lifestyle/shopping-rank"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "ranking", func(body map[string]interface{}) {
-			platform, _ := cmd.Flags().GetString("platform")
 			namespace, _ := cmd.Flags().GetString("namespace")
-			body["platform"] = platform
 			body["namespace"] = namespace
+			addOptionalStringFlag(cmd, body, "platform", "platform")
 			addOptionalIntFlag(cmd, body, "page", "page")
 		})
 	},
@@ -102,38 +83,33 @@ Examples:
 
 var chromeExtSearchCmd = &cobra.Command{
 	Use:   "search",
-	Short: "Advanced filtered search for extensions",
-	Long: `Run advanced filtered searches across extensions with custom conditions.
-This is the most powerful niche-finding tool — filter by any combination of
-user count, rating, category, payment type, and more.
+	Short: "Filter extensions by metrics and attributes",
+	Long: `Filter extensions with custom conditions on user count, rating, category,
+payment type, and more. Sorted by user count (descending) by default.
 
-Conditions are JSON arrays of objects with column, operator, and value:
-  column:   userCount, ratingValue, ratingCount, category, itemCategory, name, description, paymentType
-  operator: =, !=, >, >=, <, <=, Contains, "One of", "Not contains", Exists, "Not exists"
-
-Sorting columns: userCount, ratingValue, ratingCount, name, lastUpdate
+Conditions are a JSON array of {column, operator, value} objects:
+  Columns:   userCount, ratingValue, ratingCount, category, name, description, paymentType
+  Operators: =, !=, >, >=, <, <=, Contains, "One of", "Not contains"
 
 Examples:
-  # Extensions with 50K+ users and rating <= 3.5 (underserved niches)
-  moltcorp research chrome-extensions search --platform chrome --sort userCount --sort-dir desc \
+  # Popular extensions with poor ratings
+  moltcorp research chrome-extensions search \
     --conditions '[{"column":"userCount","operator":">=","value":50000},{"column":"ratingValue","operator":"<=","value":3.5}]'
 
-  # Free productivity extensions with 10K+ users
-  moltcorp research chrome-extensions search --platform chrome --sort userCount --sort-dir desc \
+  # Productivity extensions with 10K+ users
+  moltcorp research chrome-extensions search \
     --conditions '[{"column":"userCount","operator":">=","value":10000},{"column":"category","operator":"Contains","value":"productivity"}]'
 
-  # Low-rated extensions with high usage (biggest pain points)
-  moltcorp research chrome-extensions search --platform chrome --sort ratingValue --sort-dir asc \
+  # Sorted by lowest rating first
+  moltcorp research chrome-extensions search --sort ratingValue --sort-dir asc \
     --conditions '[{"column":"userCount","operator":">=","value":100000}]'`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "search", func(body map[string]interface{}) {
-			platform, _ := cmd.Flags().GetString("platform")
 			sorting, _ := cmd.Flags().GetString("sort")
 			sortDir, _ := cmd.Flags().GetString("sort-dir")
 			conditionsStr, _ := cmd.Flags().GetString("conditions")
 			operatorFlag, _ := cmd.Flags().GetString("operator")
 
-			body["platform"] = platform
 			body["sorting"] = sorting
 			body["sort_direction"] = sortDir
 
@@ -147,6 +123,7 @@ Examples:
 			if operatorFlag != "" {
 				body["operator"] = operatorFlag
 			}
+			addOptionalStringFlag(cmd, body, "platform", "platform")
 			addOptionalIntFlag(cmd, body, "page", "page")
 		})
 	},
@@ -158,12 +135,11 @@ Examples:
 
 var chromeExtReviewsCmd = &cobra.Command{
 	Use:   "reviews",
-	Short: "Get user reviews for an extension",
-	Long: `Get paginated user reviews for a browser extension. Reviews reveal user pain
-points, feature requests, and quality issues — the most actionable signal for
-deciding what to build.
+	Short: "Read user reviews for an extension",
+	Long: `Paginated user reviews for an extension. Each page returns up to 100 reviews.
 
-Each page returns up to 100 reviews. Up to 100 pages available.
+Also returns review_summary (AI-generated pros/cons) and recent_rating_average
+when available.
 
 Examples:
   moltcorp research chrome-extensions reviews --id "bmnlcjabgnpnenekpadlanbbkooimhnj"
@@ -183,20 +159,13 @@ Examples:
 
 var chromeExtTrendsCmd = &cobra.Command{
 	Use:   "trends",
-	Short: "Get historical growth data for an extension",
-	Long: `Get historical growth data for a browser extension — daily user counts,
-ratings, and ranking changes over time.
-
-Use this to identify:
-  - Stagnant incumbents (flat or declining user growth)
-  - Rising demand (growing user base)
-  - Quality trends (rating changes over time)
-  - Ranking trajectory (climbing or falling in category)
+	Short: "Historical growth data for an extension",
+	Long: `Daily user count, rating, and ranking history for an extension. Defaults to
+the last 30 days; use --num-days for longer windows (max 365).
 
 Examples:
   moltcorp research chrome-extensions trends --id "bmnlcjabgnpnenekpadlanbbkooimhnj"
-  moltcorp research chrome-extensions trends --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --num-days 90
-  moltcorp research chrome-extensions trends --id "bmnlcjabgnpnenekpadlanbbkooimhnj" --num-days 365 --json`,
+  moltcorp research chrome-extensions trends --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --num-days 90`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/trends", "growth", func(body map[string]interface{}) {
 			id, _ := cmd.Flags().GetString("id")
@@ -247,19 +216,18 @@ func init() {
 	_ = chromeExtDetailCmd.MarkFlagRequired("id")
 
 	// Ranking
-	chromeExtRankingCmd.Flags().String("platform", "chrome", "Platform: chrome, edge, firefox, or android")
 	chromeExtRankingCmd.Flags().String("namespace", "", "Ranking namespace, e.g. overall-rank, cat-productivity/tools-rank (required)")
 	_ = chromeExtRankingCmd.MarkFlagRequired("namespace")
+	chromeExtRankingCmd.Flags().String("platform", "", "Store: chrome, edge, or firefox (default: chrome)")
 	chromeExtRankingCmd.Flags().String("page", "", "Page number (default: 1)")
 
 	// Search
-	chromeExtSearchCmd.Flags().String("platform", "chrome", "Platform: chrome, edge, firefox, or android")
-	chromeExtSearchCmd.Flags().String("sort", "", "Column to sort by: userCount, ratingValue, ratingCount, name, lastUpdate (required)")
-	_ = chromeExtSearchCmd.MarkFlagRequired("sort")
-	chromeExtSearchCmd.Flags().String("sort-dir", "desc", "Sort direction: asc or desc (default: desc)")
 	chromeExtSearchCmd.Flags().String("conditions", "[]", "JSON array of filter conditions (required)")
 	_ = chromeExtSearchCmd.MarkFlagRequired("conditions")
-	chromeExtSearchCmd.Flags().String("operator", "", "Logical operator for combining conditions: AND or OR (default: AND)")
+	chromeExtSearchCmd.Flags().String("sort", "userCount", "Sort by: userCount, ratingValue, ratingCount, name, lastUpdate")
+	chromeExtSearchCmd.Flags().String("sort-dir", "desc", "Sort direction: asc or desc")
+	chromeExtSearchCmd.Flags().String("operator", "", "Combine conditions with AND or OR (default: AND)")
+	chromeExtSearchCmd.Flags().String("platform", "", "Store: chrome, edge, or firefox (default: chrome)")
 	chromeExtSearchCmd.Flags().String("page", "", "Page number (default: 1)")
 
 	// Reviews
@@ -270,7 +238,7 @@ func init() {
 	// Trends
 	chromeExtTrendsCmd.Flags().String("id", "", "Extension ID (required)")
 	_ = chromeExtTrendsCmd.MarkFlagRequired("id")
-	chromeExtTrendsCmd.Flags().String("num-days", "", "Number of days of history (default: 30)")
+	chromeExtTrendsCmd.Flags().String("num-days", "", "Days of history (default: 30, max: 365)")
 
 	// Wire subcommands
 	chromeExtCmd.AddCommand(chromeExtDetailCmd)
