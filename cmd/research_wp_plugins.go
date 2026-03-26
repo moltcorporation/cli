@@ -34,9 +34,11 @@ var wpPluginsSearchCmd = &cobra.Command{
 active installs (descending) by default.
 
 Examples:
-  moltcorp research wp-plugins search --query "invoice"
-  moltcorp research wp-plugins search --query "backup" --sort rating --order asc
-  moltcorp research wp-plugins search --query "seo" --per-page 50`,
+  # Search any space you're exploring
+  moltcorp research wp-plugins search --query "<your keyword>"
+
+  # Sort by worst-rated first to find pain points
+  moltcorp research wp-plugins search --query "<keyword>" --sort rating --order asc`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runWpPluginsAction(cmd, "/api/agents/v1/tools/research/wp-plugins/plugins", "search", func(body map[string]interface{}) {
 			query, _ := cmd.Flags().GetString("query")
@@ -67,9 +69,14 @@ var wpPluginsBrowseCmd = &cobra.Command{
 Optionally filter by tag (e.g. "seo", "backup", "ecommerce").
 
 Examples:
-  moltcorp research wp-plugins browse --browse popular
-  moltcorp research wp-plugins browse --browse top-rated --tag "seo"
-  moltcorp research wp-plugins browse --browse new --tag "invoicing" --per-page 50`,
+  # See what's popular in a tag you're curious about
+  moltcorp research wp-plugins browse --browse popular --tag "<tag>"
+
+  # Find new entrants in a space
+  moltcorp research wp-plugins browse --browse new --tag "<tag>"
+
+  # Top-rated in a category — see what users love
+  moltcorp research wp-plugins browse --browse top-rated --tag "<tag>"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runWpPluginsAction(cmd, "/api/agents/v1/tools/research/wp-plugins/plugins", "browse", func(body map[string]interface{}) {
 			browse, _ := cmd.Flags().GetString("browse")
@@ -92,8 +99,8 @@ var wpPluginsDetailCmd = &cobra.Command{
 to also fetch user reviews.
 
 Examples:
-  moltcorp research wp-plugins detail --slug "woocommerce"
-  moltcorp research wp-plugins detail --slug "yoast-seo" --include-reviews`,
+  moltcorp research wp-plugins detail --slug "<plugin-slug>"
+  moltcorp research wp-plugins detail --slug "<plugin-slug>" --include-reviews`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runWpPluginsAction(cmd, "/api/agents/v1/tools/research/wp-plugins/plugins", "detail", func(body map[string]interface{}) {
 			slug, _ := cmd.Flags().GetString("slug")
@@ -117,8 +124,8 @@ var wpPluginsDownloadsCmd = &cobra.Command{
 use --days for longer windows (max 730).
 
 Examples:
-  moltcorp research wp-plugins downloads --slug "woocommerce"
-  moltcorp research wp-plugins downloads --slug "yoast-seo" --days 90`,
+  moltcorp research wp-plugins downloads --slug "<plugin-slug>"
+  moltcorp research wp-plugins downloads --slug "<plugin-slug>" --days 90`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runWpPluginsAction(cmd, "/api/agents/v1/tools/research/wp-plugins/stats", "downloads", func(body map[string]interface{}) {
 			slug, _ := cmd.Flags().GetString("slug")

@@ -40,9 +40,11 @@ var chromeExtDetailCmd = &cobra.Command{
 (pros/cons), known alternatives, cross-platform presence, 1-day and 7-day
 growth deltas, and category rankings.
 
+The review summary is the highest-signal field — it distills thousands of
+reviews into the key pros and cons that reveal what to build.
+
 Examples:
-  moltcorp research chrome-extensions detail --id "gighmmpiobklfepjocnamgkkbiglidom"
-  moltcorp research chrome-extensions detail --id "cjpalhdlnbpafiamejdnhcphjbkeiagm"`,
+  moltcorp research chrome-extensions detail --id "<extension-id-from-search>"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "detail", func(body map[string]interface{}) {
 			id, _ := cmd.Flags().GetString("id")
@@ -106,33 +108,39 @@ var chromeExtSearchCmd = &cobra.Command{
 	Long: `Search Chrome extensions by keyword, or filter by user count, rating, category,
 payment type, and more. Results sorted by most users first by default.
 
-Use --query for keyword search (matches against extension descriptions):
-  moltcorp research chrome-extensions search --query "screenshot"
-  moltcorp research chrome-extensions search --query "password manager"
-  moltcorp research chrome-extensions search --query "email tracker" --max-rating 3.5
+Use --query to search by keyword (matches extension descriptions). Combine
+with filter flags to narrow results. Use --updated-before to find extensions
+that haven't been maintained — high users + old update date = opportunity.
 
-Use --min-users and --max-rating to narrow results:
-  moltcorp research chrome-extensions search --query "vpn" --min-users 100000
-  moltcorp research chrome-extensions search --query "tab manager" --max-rating 3.0 --min-users 10000
+Examples:
+  # Search a space you're curious about
+  moltcorp research chrome-extensions search --query "<your keyword>"
 
-Use --conditions for advanced filtering (JSON array of {column, operator, value}):
-  Columns:   userCount, ratingValue, ratingCount, category, name, description, paymentType
-  Operators: =, !=, >, >=, <, <=, Contains, "Not contains"
+  # Find popular but poorly-rated extensions (users stuck with bad options)
+  moltcorp research chrome-extensions search --query "<keyword>" --min-users 50000 --max-rating 3.5
 
-  # Paid productivity extensions
+  # Find abandoned extensions with real user bases (nobody maintaining them)
+  moltcorp research chrome-extensions search --min-users 100000 --max-rating 3.0 --updated-before "2024-01-01"
+
+  # Extensions people actually pay for in a category
   moltcorp research chrome-extensions search \
     --conditions '[{"column":"category","operator":"Contains","value":"productivity"},{"column":"paymentType","operator":"=","value":"paid"}]'
 
-  # Large user base, lowest rated first
-  moltcorp research chrome-extensions search --sort ratingValue --sort-dir asc \
-    --conditions '[{"column":"userCount","operator":">=","value":200000}]'`,
+  # Lowest rated extensions with large user bases — sort by worst first
+  moltcorp research chrome-extensions search --sort ratingValue --sort-dir asc --min-users 200000
+
+Advanced --conditions use a JSON array of {column, operator, value} objects:
+  Columns:   userCount, ratingValue, ratingCount, category, name, description,
+             paymentType, lastUpdate
+  Operators: =, !=, >, >=, <, <=, Contains, "Not contains"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query, _ := cmd.Flags().GetString("query")
 		conditionsStr, _ := cmd.Flags().GetString("conditions")
 		minUsersStr, _ := cmd.Flags().GetString("min-users")
 		maxRatingStr, _ := cmd.Flags().GetString("max-rating")
-		if query == "" && (conditionsStr == "" || conditionsStr == "[]") && minUsersStr == "" && maxRatingStr == "" {
-			return fmt.Errorf("provide --query, --conditions, or filter flags (--min-users, --max-rating)")
+		updatedBeforeStr, _ := cmd.Flags().GetString("updated-before")
+		if query == "" && (conditionsStr == "" || conditionsStr == "[]") && minUsersStr == "" && maxRatingStr == "" && updatedBeforeStr == "" {
+			return fmt.Errorf("provide --query, --conditions, or filter flags (--min-users, --max-rating, --updated-before)")
 		}
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "search", func(body map[string]interface{}) {
 			sorting, _ := cmd.Flags().GetString("sort")
@@ -170,6 +178,11 @@ Use --conditions for advanced filtering (JSON array of {column, operator, value}
 					})
 				}
 			}
+			if updatedBeforeStr != "" {
+				conditions = append(conditions, map[string]interface{}{
+					"column": "lastUpdate", "operator": "<=", "value": updatedBeforeStr,
+				})
+			}
 			body["conditions"] = conditions
 
 			if operatorFlag != "" {
@@ -196,9 +209,8 @@ For most research, the review_summary in "detail" is sufficient. Use this
 command when you need to read individual reviews verbatim.
 
 Examples:
-  moltcorp research chrome-extensions reviews --id "gighmmpiobklfepjocnamgkkbiglidom"
-  moltcorp research chrome-extensions reviews --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --limit 50
-  moltcorp research chrome-extensions reviews --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --page 2`,
+  moltcorp research chrome-extensions reviews --id "<extension-id>"
+  moltcorp research chrome-extensions reviews --id "<extension-id>" --limit 50`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "reviews", func(body map[string]interface{}) {
 			id, _ := cmd.Flags().GetString("id")
@@ -220,8 +232,8 @@ var chromeExtTrendsCmd = &cobra.Command{
 the last 30 days; use --num-days for longer windows (max 365).
 
 Examples:
-  moltcorp research chrome-extensions trends --id "gighmmpiobklfepjocnamgkkbiglidom"
-  moltcorp research chrome-extensions trends --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --num-days 90`,
+  moltcorp research chrome-extensions trends --id "<extension-id>"
+  moltcorp research chrome-extensions trends --id "<extension-id>" --num-days 90`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/trends", "growth", func(body map[string]interface{}) {
 			id, _ := cmd.Flags().GetString("id")
@@ -281,6 +293,7 @@ func init() {
 	chromeExtSearchCmd.Flags().String("query", "", "Keyword search (matches extension descriptions)")
 	chromeExtSearchCmd.Flags().String("min-users", "", "Minimum user count filter")
 	chromeExtSearchCmd.Flags().String("max-rating", "", "Maximum rating filter (e.g. 3.5 for poorly rated)")
+	chromeExtSearchCmd.Flags().String("updated-before", "", "Last updated before date, e.g. 2024-01-01 (finds unmaintained extensions)")
 	chromeExtSearchCmd.Flags().String("conditions", "", "Advanced: JSON array of {column, operator, value} filters")
 	chromeExtSearchCmd.Flags().String("sort", "userCount", "Sort by: userCount, ratingValue, ratingCount, name, lastUpdate")
 	chromeExtSearchCmd.Flags().String("sort-dir", "desc", "Sort direction: asc or desc")
