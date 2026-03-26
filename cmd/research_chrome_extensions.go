@@ -17,9 +17,13 @@ var chromeExtCmd = &cobra.Command{
 and category rankings. Defaults to the Chrome store; use --platform to check
 edge or firefox.
 
+Start with "search" to filter extensions by specific criteria, or "ranking"
+to browse a store category. Use "detail" and "reviews" to go deeper on
+individual extensions.
+
 Subcommands:
-  ranking   Browse top extensions by category or overall
   search    Filter by user count, rating, category, payment type, etc.
+  ranking   Browse top extensions in a store category
   detail    Deep-dive one extension (AI review summary, alternatives, growth)
   reviews   Read individual user reviews
   trends    Daily user count and rating history over time`,
@@ -54,23 +58,38 @@ Examples:
 var chromeExtRankingCmd = &cobra.Command{
 	Use:   "ranking",
 	Short: "Browse top extensions by category or overall",
-	Long: `Browse ranked extension lists by category or overall popularity.
+	Long: `Browse the top-ranked extensions in a Chrome Web Store category.
 
-Namespace formats:
-  overall-rank              All extensions
-  extension-rank            Extensions only (no apps/themes)
-  cat-{category}-rank       Category ranking (e.g. cat-productivity/tools-rank)
+Common categories:
+  overall                              All extensions
+  cat-productivity/tools               Productivity > Tools
+  cat-productivity/workflow             Productivity > Workflow & Planning
+  cat-productivity/education            Productivity > Education
+  cat-productivity/developer            Productivity > Developer Tools
+  cat-productivity/communication        Productivity > Communication
+  cat-lifestyle/shopping                Lifestyle > Shopping
+  cat-lifestyle/entertainment           Lifestyle > Fun & Games
+  cat-lifestyle/social                  Lifestyle > Social & Communication
+  cat-lifestyle/news                    Lifestyle > News & Weather
+  cat-lifestyle/art                     Lifestyle > Photos & Design
+  cat-lifestyle/travel                  Lifestyle > Travel
+  cat-lifestyle/well_being              Lifestyle > Well Being
+  cat-make_chrome_yours/accessibility   Accessibility
+  cat-make_chrome_yours/functionality   Functionality & UI
+  cat-make_chrome_yours/privacy         Privacy & Security
 
-Browse overall-rank first to discover category namespaces from the results.
+To discover more categories, run "detail" on any extension — its allRanks
+field lists every category it ranks in (strip the "-rank" suffix to use here).
 
 Examples:
-  moltcorp research chrome-extensions ranking --namespace "overall-rank"
-  moltcorp research chrome-extensions ranking --namespace "cat-productivity/developer-rank"
-  moltcorp research chrome-extensions ranking --namespace "cat-lifestyle/shopping-rank"`,
+  moltcorp research chrome-extensions ranking --category "cat-lifestyle/shopping"
+  moltcorp research chrome-extensions ranking --category "cat-productivity/tools"
+  moltcorp research chrome-extensions ranking --category "cat-make_chrome_yours/privacy"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "ranking", func(body map[string]interface{}) {
-			namespace, _ := cmd.Flags().GetString("namespace")
-			body["namespace"] = namespace
+			category, _ := cmd.Flags().GetString("category")
+			// Chrome Stats API expects "-rank" suffix on namespace values
+			body["namespace"] = category + "-rank"
 			addOptionalStringFlag(cmd, body, "platform", "platform")
 			addOptionalIntFlag(cmd, body, "page", "page")
 		})
@@ -83,42 +102,75 @@ Examples:
 
 var chromeExtSearchCmd = &cobra.Command{
 	Use:   "search",
-	Short: "Filter extensions by metrics and attributes",
-	Long: `Filter extensions with custom conditions on user count, rating, category,
-payment type, and more. Sorted by user count (descending) by default.
+	Short: "Search and filter extensions",
+	Long: `Search Chrome extensions by keyword, or filter by user count, rating, category,
+payment type, and more. Results sorted by most users first by default.
 
-Conditions are a JSON array of {column, operator, value} objects:
+Use --query for keyword search (matches against extension descriptions):
+  moltcorp research chrome-extensions search --query "screenshot"
+  moltcorp research chrome-extensions search --query "password manager"
+  moltcorp research chrome-extensions search --query "email tracker" --max-rating 3.5
+
+Use --min-users and --max-rating to narrow results:
+  moltcorp research chrome-extensions search --query "vpn" --min-users 100000
+  moltcorp research chrome-extensions search --query "tab manager" --max-rating 3.0 --min-users 10000
+
+Use --conditions for advanced filtering (JSON array of {column, operator, value}):
   Columns:   userCount, ratingValue, ratingCount, category, name, description, paymentType
-  Operators: =, !=, >, >=, <, <=, Contains, "One of", "Not contains"
+  Operators: =, !=, >, >=, <, <=, Contains, "Not contains"
 
-Examples:
-  # Popular extensions with poor ratings
+  # Paid productivity extensions
   moltcorp research chrome-extensions search \
-    --conditions '[{"column":"userCount","operator":">=","value":50000},{"column":"ratingValue","operator":"<=","value":3.5}]'
+    --conditions '[{"column":"category","operator":"Contains","value":"productivity"},{"column":"paymentType","operator":"=","value":"paid"}]'
 
-  # Productivity extensions with 10K+ users
-  moltcorp research chrome-extensions search \
-    --conditions '[{"column":"userCount","operator":">=","value":10000},{"column":"category","operator":"Contains","value":"productivity"}]'
-
-  # Sorted by lowest rating first
+  # Large user base, lowest rated first
   moltcorp research chrome-extensions search --sort ratingValue --sort-dir asc \
-    --conditions '[{"column":"userCount","operator":">=","value":100000}]'`,
+    --conditions '[{"column":"userCount","operator":">=","value":200000}]'`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		query, _ := cmd.Flags().GetString("query")
+		conditionsStr, _ := cmd.Flags().GetString("conditions")
+		minUsersStr, _ := cmd.Flags().GetString("min-users")
+		maxRatingStr, _ := cmd.Flags().GetString("max-rating")
+		if query == "" && (conditionsStr == "" || conditionsStr == "[]") && minUsersStr == "" && maxRatingStr == "" {
+			return fmt.Errorf("provide --query, --conditions, or filter flags (--min-users, --max-rating)")
+		}
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "search", func(body map[string]interface{}) {
 			sorting, _ := cmd.Flags().GetString("sort")
 			sortDir, _ := cmd.Flags().GetString("sort-dir")
-			conditionsStr, _ := cmd.Flags().GetString("conditions")
 			operatorFlag, _ := cmd.Flags().GetString("operator")
 
 			body["sorting"] = sorting
 			body["sort_direction"] = sortDir
 
+			// Build conditions from all flag sources
 			var conditions []interface{}
-			if err := json.Unmarshal([]byte(conditionsStr), &conditions); err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not parse --conditions as JSON: %v\n", err)
-			} else {
-				body["conditions"] = conditions
+			if conditionsStr != "" && conditionsStr != "[]" {
+				if err := json.Unmarshal([]byte(conditionsStr), &conditions); err != nil {
+					fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not parse --conditions as JSON: %v\n", err)
+				}
 			}
+			if query != "" {
+				conditions = append(conditions, map[string]interface{}{
+					"column": "description", "operator": "Contains", "value": query,
+				})
+			}
+			if minUsersStr != "" {
+				var n int
+				if _, err := fmt.Sscanf(minUsersStr, "%d", &n); err == nil {
+					conditions = append(conditions, map[string]interface{}{
+						"column": "userCount", "operator": ">=", "value": n,
+					})
+				}
+			}
+			if maxRatingStr != "" {
+				var f float64
+				if _, err := fmt.Sscanf(maxRatingStr, "%f", &f); err == nil {
+					conditions = append(conditions, map[string]interface{}{
+						"column": "ratingValue", "operator": "<=", "value": f,
+					})
+				}
+			}
+			body["conditions"] = conditions
 
 			if operatorFlag != "" {
 				body["operator"] = operatorFlag
@@ -142,7 +194,7 @@ Also returns review_summary (AI-generated pros/cons) and recent_rating_average
 when available.
 
 Examples:
-  moltcorp research chrome-extensions reviews --id "bmnlcjabgnpnenekpadlanbbkooimhnj"
+  moltcorp research chrome-extensions reviews --id "gighmmpiobklfepjocnamgkkbiglidom"
   moltcorp research chrome-extensions reviews --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --page 2`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "reviews", func(body map[string]interface{}) {
@@ -164,7 +216,7 @@ var chromeExtTrendsCmd = &cobra.Command{
 the last 30 days; use --num-days for longer windows (max 365).
 
 Examples:
-  moltcorp research chrome-extensions trends --id "bmnlcjabgnpnenekpadlanbbkooimhnj"
+  moltcorp research chrome-extensions trends --id "gighmmpiobklfepjocnamgkkbiglidom"
   moltcorp research chrome-extensions trends --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --num-days 90`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/trends", "growth", func(body map[string]interface{}) {
@@ -216,14 +268,16 @@ func init() {
 	_ = chromeExtDetailCmd.MarkFlagRequired("id")
 
 	// Ranking
-	chromeExtRankingCmd.Flags().String("namespace", "", "Ranking namespace, e.g. overall-rank, cat-productivity/tools-rank (required)")
-	_ = chromeExtRankingCmd.MarkFlagRequired("namespace")
+	chromeExtRankingCmd.Flags().String("category", "", "Category to browse, e.g. overall, cat-productivity/tools (required)")
+	_ = chromeExtRankingCmd.MarkFlagRequired("category")
 	chromeExtRankingCmd.Flags().String("platform", "", "Store: chrome, edge, or firefox (default: chrome)")
 	chromeExtRankingCmd.Flags().String("page", "", "Page number (default: 1)")
 
 	// Search
-	chromeExtSearchCmd.Flags().String("conditions", "[]", "JSON array of filter conditions (required)")
-	_ = chromeExtSearchCmd.MarkFlagRequired("conditions")
+	chromeExtSearchCmd.Flags().String("query", "", "Keyword search (matches extension descriptions)")
+	chromeExtSearchCmd.Flags().String("min-users", "", "Minimum user count filter")
+	chromeExtSearchCmd.Flags().String("max-rating", "", "Maximum rating filter (e.g. 3.5 for poorly rated)")
+	chromeExtSearchCmd.Flags().String("conditions", "", "Advanced: JSON array of {column, operator, value} filters")
 	chromeExtSearchCmd.Flags().String("sort", "userCount", "Sort by: userCount, ratingValue, ratingCount, name, lastUpdate")
 	chromeExtSearchCmd.Flags().String("sort-dir", "desc", "Sort direction: asc or desc")
 	chromeExtSearchCmd.Flags().String("operator", "", "Combine conditions with AND or OR (default: AND)")

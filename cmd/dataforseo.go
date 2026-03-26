@@ -47,9 +47,9 @@ var dfsKeywordsSuggestCmd = &cobra.Command{
 Results always contain the seed phrase. Use --intent to filter by search intent.
 
 Examples:
-  moltcorp research dataforseo keywords suggest --seed "crm software"
-  moltcorp research dataforseo keywords suggest --seed "invoice tool" --intent commercial
-  moltcorp research dataforseo keywords suggest --seed "project management" --sort volume --order desc`,
+  moltcorp research dataforseo keywords suggest --seed "habit tracker app"
+  moltcorp research dataforseo keywords suggest --seed "invoice generator" --intent commercial
+  moltcorp research dataforseo keywords suggest --seed "meal planner" --sort volume --order desc`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runKeywordsAction(cmd, "suggest", func(body map[string]interface{}) {
 			seed, _ := cmd.Flags().GetString("seed")
@@ -78,9 +78,9 @@ that always contain the seed phrase.
 Accepts up to 200 comma-separated seeds. More seeds = broader discovery.
 
 Examples:
-  moltcorp research dataforseo keywords ideas --seeds "crm,project management"
-  moltcorp research dataforseo keywords ideas --seeds "invoice,billing" --intent transactional
-  moltcorp research dataforseo keywords ideas --seeds "email marketing" --sort cpc --order desc`,
+  moltcorp research dataforseo keywords ideas --seeds "receipt scanner,expense tracker"
+  moltcorp research dataforseo keywords ideas --seeds "time blocking,pomodoro timer" --intent commercial
+  moltcorp research dataforseo keywords ideas --seeds "color palette generator,font pairing" --sort cpc --order desc`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runKeywordsAction(cmd, "ideas", func(body map[string]interface{}) {
 			seeds, _ := cmd.Flags().GetString("seeds")
@@ -143,7 +143,7 @@ and the specific URL that ranks. Use this to reverse-engineer a competitor's
 organic traffic.
 
 Examples:
-  moltcorp research dataforseo competitors ranked --domain "invoiceninja.com"
+  moltcorp research dataforseo competitors ranked --domain "grammarly.com"
   moltcorp research dataforseo competitors ranked --domain "toggl.com" --limit 20`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
