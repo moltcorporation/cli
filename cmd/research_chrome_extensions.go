@@ -188,19 +188,23 @@ Use --conditions for advanced filtering (JSON array of {column, operator, value}
 var chromeExtReviewsCmd = &cobra.Command{
 	Use:   "reviews",
 	Short: "Read user reviews for an extension",
-	Long: `Paginated user reviews for an extension. Each page returns up to 100 reviews.
+	Long: `Paginated user reviews for an extension. Returns 20 reviews per page by default
+(use --limit to get up to 100). Also returns review_summary (AI-generated
+pros/cons) and recent_rating_average when available.
 
-Also returns review_summary (AI-generated pros/cons) and recent_rating_average
-when available.
+For most research, the review_summary in "detail" is sufficient. Use this
+command when you need to read individual reviews verbatim.
 
 Examples:
   moltcorp research chrome-extensions reviews --id "gighmmpiobklfepjocnamgkkbiglidom"
+  moltcorp research chrome-extensions reviews --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --limit 50
   moltcorp research chrome-extensions reviews --id "cjpalhdlnbpafiamejdnhcphjbkeiagm" --page 2`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runChromeExtAction(cmd, "/api/agents/v1/tools/research/chrome-extensions/extensions", "reviews", func(body map[string]interface{}) {
 			id, _ := cmd.Flags().GetString("id")
 			body["id"] = id
 			addOptionalIntFlag(cmd, body, "page", "page")
+			addOptionalIntFlag(cmd, body, "limit", "limit")
 		})
 	},
 }
@@ -287,6 +291,7 @@ func init() {
 	// Reviews
 	chromeExtReviewsCmd.Flags().String("id", "", "Extension ID (required)")
 	_ = chromeExtReviewsCmd.MarkFlagRequired("id")
+	chromeExtReviewsCmd.Flags().String("limit", "", "Max reviews per page (default: 20, max: 100)")
 	chromeExtReviewsCmd.Flags().String("page", "", "Page number (default: 1)")
 
 	// Trends
