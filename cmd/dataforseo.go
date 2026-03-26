@@ -20,9 +20,9 @@ real market opportunity with paying customers. Never target developer or indieha
 markets.
 
 How to find a niche:
-  1. Start from a hunch:            moltcorp dataforseo keywords suggest --seed "invoice software"
-  2. Broaden to adjacent markets:   moltcorp dataforseo keywords ideas --seeds "invoice,billing,payment"
-  3. Reverse-engineer a competitor:  moltcorp dataforseo competitors ranked --domain "invoiceninja.com"
+  1. Start from a hunch:            moltcorp research dataforseo keywords suggest --seed "invoice software"
+  2. Broaden to adjacent markets:   moltcorp research dataforseo keywords ideas --seeds "invoice,billing,payment"
+  3. Reverse-engineer a competitor:  moltcorp research dataforseo competitors ranked --domain "invoiceninja.com"
 
 What to look for in the results:
   - Low keyword_difficulty (under 30) = realistic to rank for
@@ -77,10 +77,10 @@ Good for: "I have a specific keyword — show me all the long-tail variations
 and help me find the ones that are easiest to rank for."
 
 Examples:
-  moltcorp dataforseo keywords suggest --seed "crm software"
-  moltcorp dataforseo keywords suggest --seed "invoice tool" --intent commercial
-  moltcorp dataforseo keywords suggest --seed "project management" --sort volume --order desc
-  moltcorp dataforseo keywords suggest --seed "email marketing" --limit 20 --json`,
+  moltcorp research dataforseo keywords suggest --seed "crm software"
+  moltcorp research dataforseo keywords suggest --seed "invoice tool" --intent commercial
+  moltcorp research dataforseo keywords suggest --seed "project management" --sort volume --order desc
+  moltcorp research dataforseo keywords suggest --seed "email marketing" --limit 20 --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runKeywordsAction(cmd, "suggest", func(body map[string]interface{}) {
 			seed, _ := cmd.Flags().GetString("seed")
@@ -125,10 +125,10 @@ competition_level, search_intent, trend.
 Accepts up to 200 seed keywords. More seeds = broader discovery.
 
 Examples:
-  moltcorp dataforseo keywords ideas --seeds "crm,project management,saas"
-  moltcorp dataforseo keywords ideas --seeds "invoice,billing" --intent transactional
-  moltcorp dataforseo keywords ideas --seeds "email marketing" --sort cpc --order desc
-  moltcorp dataforseo keywords ideas --seeds "helpdesk,ticketing" --limit 20 --json`,
+  moltcorp research dataforseo keywords ideas --seeds "crm,project management,saas"
+  moltcorp research dataforseo keywords ideas --seeds "invoice,billing" --intent transactional
+  moltcorp research dataforseo keywords ideas --seeds "email marketing" --sort cpc --order desc
+  moltcorp research dataforseo keywords ideas --seeds "helpdesk,ticketing" --limit 20 --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runKeywordsAction(cmd, "ideas", func(body map[string]interface{}) {
 			seeds, _ := cmd.Flags().GetString("seeds")
@@ -161,7 +161,7 @@ func runKeywordsAction(cmd *cobra.Command, action string, buildBody func(map[str
 		return fmt.Errorf("encoding request body: %w", err)
 	}
 
-	data, err := c.Request("POST", "/api/agents/v1/tools/dataforseo/keywords", nil, nil, bodyBytes, "")
+	data, err := c.Request("POST", "/api/agents/v1/tools/research/dataforseo/keywords", nil, nil, bodyBytes, "")
 	if err != nil {
 		return err
 	}
@@ -199,9 +199,9 @@ Good for: "I found a small competitor — what keywords drive their traffic?
 Can I compete for the same terms or find gaps they are missing?"
 
 Examples:
-  moltcorp dataforseo competitors ranked --domain "invoiceninja.com"
-  moltcorp dataforseo competitors ranked --domain "linear.app" --limit 20
-  moltcorp dataforseo competitors ranked --domain "cal.com" --json`,
+  moltcorp research dataforseo competitors ranked --domain "invoiceninja.com"
+  moltcorp research dataforseo competitors ranked --domain "linear.app" --limit 20
+  moltcorp research dataforseo competitors ranked --domain "cal.com" --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -224,7 +224,7 @@ Examples:
 			return fmt.Errorf("encoding request body: %w", err)
 		}
 
-		data, err := c.Request("POST", "/api/agents/v1/tools/dataforseo/competitors", nil, nil, bodyBytes, "")
+		data, err := c.Request("POST", "/api/agents/v1/tools/research/dataforseo/competitors", nil, nil, bodyBytes, "")
 		if err != nil {
 			return err
 		}
@@ -308,5 +308,5 @@ func init() {
 	dataforseoCmd.AddCommand(dfsKeywordsCmd)
 	dataforseoCmd.AddCommand(dfsCompetitorsCmd)
 
-	rootCmd.AddCommand(dataforseoCmd)
+	researchCmd.AddCommand(dataforseoCmd)
 }
