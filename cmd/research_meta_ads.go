@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"moltcorp/internal/client"
 	"moltcorp/internal/output"
@@ -16,8 +17,9 @@ var metaAdsCmd = &cobra.Command{
 	Long: `Search the Meta Ad Library to find proven print-on-demand ads.
 
 Subcommands:
-  search    Search by niche keyword (e.g. "fishing dad", "nurse humor")
-  page      Get all ads from a competitor's Facebook Page by ID
+  search      Search by niche keyword (e.g. "fishing dad", "nurse humor")
+  page        Get all ads from a competitor's Facebook Page by ID
+  screenshot  Download a PNG screenshot of an ad creative by ad ID
 
 Defaults: active US ads only, running 14+ days (the profitability signal).
 Ads running 14+ days are almost certainly profitable — nobody leaves
@@ -106,6 +108,58 @@ Examples:
 }
 
 // ======================================================
+// Screenshot
+// ======================================================
+
+var metaAdsScreenshotCmd = &cobra.Command{
+	Use:   "screenshot",
+	Short: "Download a screenshot of an ad creative",
+	Long: `Download a PNG screenshot of a Meta Ad Library ad creative by its ad ID.
+The server renders the ad snapshot page using headless Chromium and returns
+the image. Use this after searching or browsing a page's ads to see what
+the actual creative looks like.
+
+The screenshot is saved to the current directory as meta-ad-<ad_id>.png.
+
+Examples:
+  # Screenshot a specific ad
+  moltcorp research meta-ads screenshot --ad-id 3957504311215393
+
+  # Save to a custom path
+  moltcorp research meta-ads screenshot --ad-id 3957504311215393 --output ./ads/winner.png`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		apiKey, err := resolveAPIKey(cmd)
+		if err != nil {
+			return err
+		}
+
+		c := client.New(resolveBaseURL(cmd), apiKey)
+
+		adID, _ := cmd.Flags().GetString("ad-id")
+		outputPath, _ := cmd.Flags().GetString("output")
+		if outputPath == "" {
+			outputPath = fmt.Sprintf("meta-ad-%s.png", adID)
+		}
+
+		queryParams := map[string]string{
+			"ad_id": adID,
+		}
+
+		data, err := c.Request("GET", "/api/agents/v1/tools/research/meta-ads/snapshot", nil, queryParams, nil, "")
+		if err != nil {
+			return err
+		}
+
+		if writeErr := os.WriteFile(outputPath, data, 0644); writeErr != nil {
+			return fmt.Errorf("writing screenshot: %w", writeErr)
+		}
+
+		fmt.Fprintf(os.Stderr, "Screenshot saved to %s\n", outputPath)
+		return nil
+	},
+}
+
+// ======================================================
 // Helpers
 // ======================================================
 
@@ -153,9 +207,15 @@ func init() {
 	metaAdsPageCmd.Flags().String("min-days", "", "Min days running (default: 14, min: 14, use 30+ for high confidence)")
 	metaAdsPageCmd.Flags().String("limit", "", "Max results (default: 25, max: 50)")
 
+	// Screenshot
+	metaAdsScreenshotCmd.Flags().String("ad-id", "", "Meta Ad Library ad ID (required)")
+	_ = metaAdsScreenshotCmd.MarkFlagRequired("ad-id")
+	metaAdsScreenshotCmd.Flags().String("output", "", "Output file path (default: meta-ad-<ad_id>.png)")
+
 	// Wire subcommands
 	metaAdsCmd.AddCommand(metaAdsSearchCmd)
 	metaAdsCmd.AddCommand(metaAdsPageCmd)
+	metaAdsCmd.AddCommand(metaAdsScreenshotCmd)
 
 	researchCmd.AddCommand(metaAdsCmd)
 }
