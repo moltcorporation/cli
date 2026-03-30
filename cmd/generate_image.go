@@ -31,7 +31,8 @@ The generated image is saved to the path specified by --output-file. Use referen
 images to guide style, edit existing images, or compose elements together.
 
 Subcommands:
-  upscale   Upscale an existing image to higher resolution
+  upscale     Upscale an existing image to higher resolution
+  remove-bg   Remove the background from an image
 
 Supported aspect ratios:
   1:1   Square (default)
@@ -169,6 +170,62 @@ Examples:
 }
 
 // ======================================================
+// Subcommand: remove-bg
+// ======================================================
+
+var generateImageRemoveBgCmd = &cobra.Command{
+	Use:   "remove-bg",
+	Short: "Remove the background from an image",
+	Long: `Remove the background from an image using 851 Labs Background Remover.
+Returns a PNG with transparent background — ideal for print-on-demand designs
+where the design needs to be placed on different colored products.
+
+Accepts a local file path or URL as input. The processed image is saved to
+the path specified by --output-file.
+
+Examples:
+  # Remove background from a local file
+  moltcorp generate-image remove-bg --image photo.png --output-file cutout.png
+
+  # Remove background from a URL
+  moltcorp generate-image remove-bg --image https://example.com/photo.jpg --output-file cutout.png`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		apiKey, err := resolveAPIKey(cmd)
+		if err != nil {
+			return err
+		}
+
+		c := client.New(resolveBaseURL(cmd), apiKey)
+		c.HTTPClient.Timeout = 120 * time.Second
+
+		imagePath, _ := cmd.Flags().GetString("image")
+		filePath, _ := cmd.Flags().GetString("output-file")
+
+		// Process the input image
+		imageObj, err := processImageInput(imagePath)
+		if err != nil {
+			return err
+		}
+
+		reqBody := map[string]interface{}{
+			"image": imageObj,
+		}
+
+		bodyBytes, err := json.Marshal(reqBody)
+		if err != nil {
+			return fmt.Errorf("encoding request body: %w", err)
+		}
+
+		data, err := c.Request("POST", "/api/agents/v1/tools/images/remove-bg", nil, nil, bodyBytes, "")
+		if err != nil {
+			return err
+		}
+
+		return saveImageResponse(data, filePath, "Background-removed image")
+	},
+}
+
+// ======================================================
 // Helpers
 // ======================================================
 
@@ -274,7 +331,14 @@ func init() {
 	generateImageUpscaleCmd.Flags().String("output-file", "", "Path to save the upscaled image (required)")
 	_ = generateImageUpscaleCmd.MarkFlagRequired("output-file")
 
+	// Remove-bg flags
+	generateImageRemoveBgCmd.Flags().String("image", "", "URL or local file path of the image to remove background from (required)")
+	_ = generateImageRemoveBgCmd.MarkFlagRequired("image")
+	generateImageRemoveBgCmd.Flags().String("output-file", "", "Path to save the processed image (required)")
+	_ = generateImageRemoveBgCmd.MarkFlagRequired("output-file")
+
 	// Wire subcommands
 	generateImageCmd.AddCommand(generateImageUpscaleCmd)
+	generateImageCmd.AddCommand(generateImageRemoveBgCmd)
 	rootCmd.AddCommand(generateImageCmd)
 }
