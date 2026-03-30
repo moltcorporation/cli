@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"moltcorp/internal/client"
@@ -23,9 +21,9 @@ import (
 var generateImageCmd = &cobra.Command{
 	Use:   "generate-image",
 	Short: "Generate images with AI",
-	Long: `Generate images from text prompts. Supports reference images for editing,
-aspect ratios, and resolution up to 4K. Write your own detailed prompt
-describing exactly what you need.
+	Long: `Generate images from text prompts. Supports reference image URLs for editing,
+aspect ratios, and resolution up to 4K. Returns a public URL to the generated
+image (valid for 24 hours). Use --output-file to also download locally.
 
 Subcommands:
   upscale     Upscale an existing image to higher resolution (4x)
@@ -35,10 +33,9 @@ Aspect ratios: 1:1 (default), 2:3, 3:2, 3:4 (t-shirts), 4:3, 4:5, 5:4, 9:16, 16:
 Resolutions:   1K (default), 2K, 4K
 
 Examples:
-  moltcorp generate-image --prompt "<your prompt>" --output-file design.png
-  moltcorp generate-image --prompt "<your prompt>" --output-file design.png --aspect-ratio 3:4 --resolution 4K
-  moltcorp generate-image --prompt "<edit instruction>" --reference-image original.png --output-file edited.png
-  moltcorp generate-image --prompt "<prompt>" --reference-image a.png --reference-image b.png --output-file out.png`,
+  moltcorp generate-image --prompt "cool cat in hammock, vintage style"
+  moltcorp generate-image --prompt "..." --aspect-ratio 3:4 --resolution 2K
+  moltcorp generate-image --prompt "edit: make background transparent" --reference-image https://example.com/img.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -54,20 +51,14 @@ Examples:
 		aspectRatio, _ := cmd.Flags().GetString("aspect-ratio")
 		resolution, _ := cmd.Flags().GetString("resolution")
 
-		// Build request body
 		reqBody := map[string]interface{}{
 			"prompt":       prompt,
 			"aspect_ratio": aspectRatio,
 			"resolution":   resolution,
 		}
 
-		// Process reference images
 		if len(refImages) > 0 {
-			refs, err := processImageInputs(refImages)
-			if err != nil {
-				return err
-			}
-			reqBody["reference_images"] = refs
+			reqBody["reference_images"] = refImages
 		}
 
 		bodyBytes, err := json.Marshal(reqBody)
@@ -80,7 +71,7 @@ Examples:
 			return err
 		}
 
-		return saveImageResponse(data, filePath, "Image")
+		return handleURLResponse(data, filePath, "Image")
 	},
 }
 
@@ -91,12 +82,12 @@ Examples:
 var generateImageUpscaleCmd = &cobra.Command{
 	Use:   "upscale",
 	Short: "Upscale an image to higher resolution",
-	Long: `Upscale an image to 4x resolution (e.g. 1024x1024 → 4096x4096). Output is
-PNG. Accepts a local file or URL.
+	Long: `Upscale an image to 4x resolution (e.g. 1024x1024 → 4096x4096). Provide
+the image as a URL. Returns a public URL to the upscaled PNG (valid for
+24 hours). Use --output-file to also download locally.
 
 Examples:
-  moltcorp generate-image upscale --image design.png --output-file design-4k.png
-  moltcorp generate-image upscale --image https://example.com/img.png --output-file upscaled.png`,
+  moltcorp generate-image upscale --image-url https://example.com/design.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -106,17 +97,11 @@ Examples:
 		c := client.New(resolveBaseURL(cmd), apiKey)
 		c.HTTPClient.Timeout = 120 * time.Second
 
-		imagePath, _ := cmd.Flags().GetString("image")
+		imageURL, _ := cmd.Flags().GetString("image-url")
 		filePath, _ := cmd.Flags().GetString("output-file")
 
-		// Process the input image
-		imageObj, err := processImageInput(imagePath)
-		if err != nil {
-			return err
-		}
-
 		reqBody := map[string]interface{}{
-			"image": imageObj,
+			"image_url": imageURL,
 		}
 
 		bodyBytes, err := json.Marshal(reqBody)
@@ -129,7 +114,7 @@ Examples:
 			return err
 		}
 
-		return saveImageResponse(data, filePath, "Upscaled image")
+		return handleURLResponse(data, filePath, "Upscaled image")
 	},
 }
 
@@ -140,12 +125,12 @@ Examples:
 var generateImageRemoveBgCmd = &cobra.Command{
 	Use:   "remove-bg",
 	Short: "Remove the background from an image",
-	Long: `Remove the background from an image. Returns a PNG with transparent
-background (RGBA). Accepts a local file or URL.
+	Long: `Remove the background from an image. Provide the image as a URL. Returns a
+public URL to a PNG with transparent background (valid for 24 hours). Use
+--output-file to also download locally.
 
 Examples:
-  moltcorp generate-image remove-bg --image photo.png --output-file cutout.png
-  moltcorp generate-image remove-bg --image https://example.com/img.jpg --output-file cutout.png`,
+  moltcorp generate-image remove-bg --image-url https://example.com/photo.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -155,17 +140,11 @@ Examples:
 		c := client.New(resolveBaseURL(cmd), apiKey)
 		c.HTTPClient.Timeout = 120 * time.Second
 
-		imagePath, _ := cmd.Flags().GetString("image")
+		imageURL, _ := cmd.Flags().GetString("image-url")
 		filePath, _ := cmd.Flags().GetString("output-file")
 
-		// Process the input image
-		imageObj, err := processImageInput(imagePath)
-		if err != nil {
-			return err
-		}
-
 		reqBody := map[string]interface{}{
-			"image": imageObj,
+			"image_url": imageURL,
 		}
 
 		bodyBytes, err := json.Marshal(reqBody)
@@ -178,7 +157,7 @@ Examples:
 			return err
 		}
 
-		return saveImageResponse(data, filePath, "Background-removed image")
+		return handleURLResponse(data, filePath, "Background-removed image")
 	},
 }
 
@@ -186,86 +165,62 @@ Examples:
 // Helpers
 // ======================================================
 
-// processImageInput converts a file path or URL into an image object for the API.
-func processImageInput(input string) (map[string]interface{}, error) {
-	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
-		return map[string]interface{}{
-			"type": "url",
-			"data": input,
-		}, nil
-	}
-
-	// Local file — read and base64 encode
-	fileBytes, err := os.ReadFile(input)
-	if err != nil {
-		return nil, fmt.Errorf("reading image file %q: %w", input, err)
-	}
-
-	return map[string]interface{}{
-		"type":       "base64",
-		"data":       base64.StdEncoding.EncodeToString(fileBytes),
-		"media_type": mediaTypeFromExt(filepath.Ext(input)),
-	}, nil
-}
-
-// processImageInputs converts multiple file paths or URLs into image objects.
-func processImageInputs(inputs []string) ([]map[string]interface{}, error) {
-	results := make([]map[string]interface{}, 0, len(inputs))
-	for _, input := range inputs {
-		obj, err := processImageInput(input)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, obj)
-	}
-	return results, nil
-}
-
-// saveImageResponse parses the API response, decodes the base64 image, and writes it to disk.
-func saveImageResponse(data []byte, filePath string, label string) error {
+// handleURLResponse parses the API response containing a URL, prints it to stdout,
+// and optionally downloads the image if --output-file was specified.
+func handleURLResponse(data []byte, filePath string, label string) error {
 	var resp struct {
-		Image    string `json:"image"`
+		URL      string `json:"url"`
 		MimeType string `json:"mime_type"`
+		Error    string `json:"error"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return fmt.Errorf("parsing response: %w", err)
 	}
 
-	if resp.Image == "" {
-		// Not an image response — print as regular output (likely an error)
+	if resp.Error != "" {
 		output.Print(data, "json")
 		return nil
 	}
 
-	imgBytes, err := base64.StdEncoding.DecodeString(resp.Image)
-	if err != nil {
-		return fmt.Errorf("decoding image: %w", err)
+	if resp.URL == "" {
+		output.Print(data, "json")
+		return nil
 	}
 
-	if err := os.WriteFile(filePath, imgBytes, 0o644); err != nil {
-		return fmt.Errorf("writing image file: %w", err)
+	// Always print the URL to stdout (for piping)
+	fmt.Println(resp.URL)
+
+	// Download to file if --output-file was specified
+	if filePath != "" {
+		if err := downloadFile(resp.URL, filePath); err != nil {
+			return fmt.Errorf("downloading image: %w", err)
+		}
+		output.PrintHint("%s saved to %s", label, filePath)
 	}
 
-	output.PrintHint("%s saved to %s", label, filePath)
 	return nil
 }
 
-// mediaTypeFromExt returns a MIME type based on the file extension.
-func mediaTypeFromExt(ext string) string {
-	switch strings.ToLower(ext) {
-	case ".png":
-		return "image/png"
-	case ".jpg", ".jpeg":
-		return "image/jpeg"
-	case ".webp":
-		return "image/webp"
-	case ".gif":
-		return "image/gif"
-	case ".svg":
-		return "image/svg+xml"
-	default:
-		return http.DetectContentType(nil) // fallback: application/octet-stream
+// downloadFile downloads a URL to a local file.
+func downloadFile(url, filePath string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	f, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, resp.Body)
+	return err
 }
 
 // ======================================================
@@ -276,23 +231,20 @@ func init() {
 	// Generate image flags
 	generateImageCmd.Flags().String("prompt", "", "Text description of the image to generate (required)")
 	_ = generateImageCmd.MarkFlagRequired("prompt")
-	generateImageCmd.Flags().String("output-file", "", "Path to save the generated image (required)")
-	_ = generateImageCmd.MarkFlagRequired("output-file")
-	generateImageCmd.Flags().StringSlice("reference-image", nil, "URL or local file path for reference images (repeatable, max 5)")
+	generateImageCmd.Flags().String("output-file", "", "Download the image to this local path (optional)")
+	generateImageCmd.Flags().StringSlice("reference-image", nil, "Reference image URLs for editing or style guidance (repeatable, max 5)")
 	generateImageCmd.Flags().String("aspect-ratio", "1:1", "Image aspect ratio: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9")
 	generateImageCmd.Flags().String("resolution", "1K", "Output resolution: 1K (standard), 2K (high), 4K (print)")
 
 	// Upscale flags
-	generateImageUpscaleCmd.Flags().String("image", "", "URL or local file path of the image to upscale (required)")
-	_ = generateImageUpscaleCmd.MarkFlagRequired("image")
-	generateImageUpscaleCmd.Flags().String("output-file", "", "Path to save the upscaled image (required)")
-	_ = generateImageUpscaleCmd.MarkFlagRequired("output-file")
+	generateImageUpscaleCmd.Flags().String("image-url", "", "URL of the image to upscale (required)")
+	_ = generateImageUpscaleCmd.MarkFlagRequired("image-url")
+	generateImageUpscaleCmd.Flags().String("output-file", "", "Download the image to this local path (optional)")
 
 	// Remove-bg flags
-	generateImageRemoveBgCmd.Flags().String("image", "", "URL or local file path of the image to remove background from (required)")
-	_ = generateImageRemoveBgCmd.MarkFlagRequired("image")
-	generateImageRemoveBgCmd.Flags().String("output-file", "", "Path to save the processed image (required)")
-	_ = generateImageRemoveBgCmd.MarkFlagRequired("output-file")
+	generateImageRemoveBgCmd.Flags().String("image-url", "", "URL of the image to remove background from (required)")
+	_ = generateImageRemoveBgCmd.MarkFlagRequired("image-url")
+	generateImageRemoveBgCmd.Flags().String("output-file", "", "Download the image to this local path (optional)")
 
 	// Wire subcommands
 	generateImageCmd.AddCommand(generateImageUpscaleCmd)
