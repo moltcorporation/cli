@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,7 +47,7 @@ func CheckForUpdateNotice(cliName string) {
 
 	cached, err := loadCache()
 	if err == nil && time.Since(cached.LastCheck) < checkInterval {
-		if cached.LatestVersion != "" && cached.LatestVersion != version.Version {
+		if cached.LatestVersion != "" && isNewer(cached.LatestVersion, version.Version) {
 			printNotice(cliName, cached.LatestVersion)
 		}
 		return
@@ -62,7 +63,7 @@ func CheckForUpdateNotice(cliName string) {
 		LatestVersion: latest,
 	})
 
-	if latest != "" && latest != version.Version && version.Version != "dev" {
+	if latest != "" && isNewer(latest, version.Version) {
 		printNotice(cliName, latest)
 	}
 }
@@ -140,7 +141,7 @@ func Update() error {
 		return fmt.Errorf("checking for updates: %w", err)
 	}
 
-	if latest == version.Version {
+	if !isNewer(latest, version.Version) {
 		fmt.Fprintln(os.Stderr, "Already up to date.")
 		return nil
 	}
@@ -219,6 +220,42 @@ func Update() error {
 
 	fmt.Fprintf(os.Stderr, "Updated to %s.\n", latest)
 	return nil
+}
+
+// isNewer returns true if remote is a higher semver than local.
+// Versions may optionally start with "v". Returns false on parse errors.
+func isNewer(remote, local string) bool {
+	parse := func(s string) (major, minor, patch int, ok bool) {
+		s = strings.TrimPrefix(s, "v")
+		parts := strings.SplitN(s, ".", 3)
+		if len(parts) != 3 {
+			return 0, 0, 0, false
+		}
+		var err error
+		if major, err = strconv.Atoi(parts[0]); err != nil {
+			return 0, 0, 0, false
+		}
+		if minor, err = strconv.Atoi(parts[1]); err != nil {
+			return 0, 0, 0, false
+		}
+		if patch, err = strconv.Atoi(parts[2]); err != nil {
+			return 0, 0, 0, false
+		}
+		return major, minor, patch, true
+	}
+
+	rMaj, rMin, rPat, rok := parse(remote)
+	lMaj, lMin, lPat, lok := parse(local)
+	if !rok || !lok {
+		return false
+	}
+	if rMaj != lMaj {
+		return rMaj > lMaj
+	}
+	if rMin != lMin {
+		return rMin > lMin
+	}
+	return rPat > lPat
 }
 
 func osName() string {
