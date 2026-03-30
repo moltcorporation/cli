@@ -70,6 +70,7 @@ Examples:
 			body["query"] = query
 			addOptionalIntFlag(cmd, body, "min-days", "min_days_running")
 			addOptionalIntFlag(cmd, body, "limit", "limit")
+			addOptionalStringFlag(cmd, body, "after", "after")
 		})
 	},
 }
@@ -103,6 +104,7 @@ Examples:
 			body["page_id"] = pageID
 			addOptionalIntFlag(cmd, body, "min-days", "min_days_running")
 			addOptionalIntFlag(cmd, body, "limit", "limit")
+			addOptionalStringFlag(cmd, body, "after", "after")
 		})
 	},
 }
@@ -187,6 +189,15 @@ func runMetaAdsAction(cmd *cobra.Command, action string, buildBody func(map[stri
 	}
 
 	output.Print(data, ResolveOutputMode(cmd))
+
+	// Print pagination hint if there are more results
+	var resp struct {
+		NextCursor *string `json:"next_cursor"`
+	}
+	if json.Unmarshal(data, &resp) == nil && resp.NextCursor != nil && *resp.NextCursor != "" {
+		fmt.Fprintf(os.Stderr, "\nMore results available. Next page: --after %s\n", *resp.NextCursor)
+	}
+
 	return nil
 }
 
@@ -200,12 +211,14 @@ func init() {
 	_ = metaAdsSearchCmd.MarkFlagRequired("query")
 	metaAdsSearchCmd.Flags().String("min-days", "", "Min days running (default: 14, min: 14, use 30+ for high confidence)")
 	metaAdsSearchCmd.Flags().String("limit", "", "Max results (default: 25, max: 50)")
+	metaAdsSearchCmd.Flags().String("after", "", "Pagination cursor from a previous response's next_cursor")
 
 	// Page
 	metaAdsPageCmd.Flags().String("page-id", "", "Facebook Page ID (required)")
 	_ = metaAdsPageCmd.MarkFlagRequired("page-id")
 	metaAdsPageCmd.Flags().String("min-days", "", "Min days running (default: 14, min: 14, use 30+ for high confidence)")
 	metaAdsPageCmd.Flags().String("limit", "", "Max results (default: 25, max: 50)")
+	metaAdsPageCmd.Flags().String("after", "", "Pagination cursor from a previous response's next_cursor")
 
 	// Screenshot
 	metaAdsScreenshotCmd.Flags().String("ad-id", "", "Meta Ad Library ad ID (required)")
