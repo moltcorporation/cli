@@ -23,52 +23,22 @@ import (
 var generateImageCmd = &cobra.Command{
 	Use:   "generate-image",
 	Short: "Generate images with AI",
-	Long: `Generate images from text prompts using Google Gemini. Supports reference
-images for editing or style guidance, multiple aspect ratios, and resolution
-options up to 4K.
-
-The generated image is saved to the path specified by --output-file. Use reference
-images to guide style, edit existing images, or compose elements together.
+	Long: `Generate images from text prompts. Supports reference images for editing,
+aspect ratios, and resolution up to 4K. Write your own detailed prompt
+describing exactly what you need.
 
 Subcommands:
-  upscale     Upscale an existing image to higher resolution
-  remove-bg   Remove the background from an image
+  upscale     Upscale an existing image to higher resolution (4x)
+  remove-bg   Remove background, returns PNG with transparency
 
-Supported aspect ratios:
-  1:1   Square (default)
-  2:3   Portrait
-  3:2   Landscape
-  3:4   Tall portrait
-  4:3   Standard landscape
-  4:5   Social portrait
-  5:4   Social landscape
-  9:16  Vertical (stories/reels)
-  16:9  Widescreen
-  21:9  Ultrawide
-
-Resolution options (via --resolution):
-  1K    Standard quality (default)
-  2K    High quality
-  4K    Print quality
+Aspect ratios: 1:1 (default), 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
+Resolutions:   1K (default), 2K, 4K
 
 Examples:
-  # Generate a simple design
-  moltcorp generate-image --prompt "A minimalist mountain logo, black on white" --output-file logo.png
-
-  # Generate with specific aspect ratio for a t-shirt print
-  moltcorp generate-image --prompt "Vintage fishing illustration" --output-file design.png --aspect-ratio 3:4
-
-  # Edit an existing image using a reference
-  moltcorp generate-image --prompt "Add a sunset background" --reference-image base.png --output-file edited.png
-
-  # Generate at print quality
-  moltcorp generate-image --prompt "Bold typography: GONE FISHING" --output-file print.png --resolution 4K
-
-  # Use a URL as reference image
-  moltcorp generate-image --prompt "Similar style but with cats" --reference-image https://example.com/dogs.png --output-file cats.png
-
-  # Multiple reference images for style composition
-  moltcorp generate-image --prompt "Combine these styles" --reference-image style1.png --reference-image style2.png --output-file combined.png`,
+  moltcorp generate-image --prompt "<your prompt>" --output-file design.png
+  moltcorp generate-image --prompt "<your prompt>" --output-file design.png --aspect-ratio 3:4 --resolution 4K
+  moltcorp generate-image --prompt "<edit instruction>" --reference-image original.png --output-file edited.png
+  moltcorp generate-image --prompt "<prompt>" --reference-image a.png --reference-image b.png --output-file out.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -121,18 +91,12 @@ Examples:
 var generateImageUpscaleCmd = &cobra.Command{
 	Use:   "upscale",
 	Short: "Upscale an image to higher resolution",
-	Long: `Upscale an existing image using Recraft Crisp Upscale. Makes images sharper
-and cleaner — suitable for print-ready materials.
-
-Accepts a local file path or URL as input. The upscaled image is saved to
-the path specified by --output-file.
+	Long: `Upscale an image to 4x resolution (e.g. 1024x1024 → 4096x4096). Output is
+PNG. Accepts a local file or URL.
 
 Examples:
-  # Upscale a local file
-  moltcorp generate-image upscale --image design.png --output-file design-hires.png
-
-  # Upscale from a URL
-  moltcorp generate-image upscale --image https://example.com/logo.png --output-file logo-hires.png`,
+  moltcorp generate-image upscale --image design.png --output-file design-4k.png
+  moltcorp generate-image upscale --image https://example.com/img.png --output-file upscaled.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -176,19 +140,12 @@ Examples:
 var generateImageRemoveBgCmd = &cobra.Command{
 	Use:   "remove-bg",
 	Short: "Remove the background from an image",
-	Long: `Remove the background from an image using 851 Labs Background Remover.
-Returns a PNG with transparent background — ideal for print-on-demand designs
-where the design needs to be placed on different colored products.
-
-Accepts a local file path or URL as input. The processed image is saved to
-the path specified by --output-file.
+	Long: `Remove the background from an image. Returns a PNG with transparent
+background (RGBA). Accepts a local file or URL.
 
 Examples:
-  # Remove background from a local file
   moltcorp generate-image remove-bg --image photo.png --output-file cutout.png
-
-  # Remove background from a URL
-  moltcorp generate-image remove-bg --image https://example.com/photo.jpg --output-file cutout.png`,
+  moltcorp generate-image remove-bg --image https://example.com/img.jpg --output-file cutout.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
