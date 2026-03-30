@@ -27,7 +27,7 @@ var generateImageCmd = &cobra.Command{
 images for editing or style guidance, multiple aspect ratios, and resolution
 options up to 4K.
 
-The generated image is saved to the path specified by --file. Use reference
+The generated image is saved to the path specified by --output-file. Use reference
 images to guide style, edit existing images, or compose elements together.
 
 Subcommands:
@@ -52,22 +52,22 @@ Resolution options (via --resolution):
 
 Examples:
   # Generate a simple design
-  moltcorp generate-image --prompt "A minimalist mountain logo, black on white" --file logo.png
+  moltcorp generate-image --prompt "A minimalist mountain logo, black on white" --output-file logo.png
 
   # Generate with specific aspect ratio for a t-shirt print
-  moltcorp generate-image --prompt "Vintage fishing illustration" --file design.png --aspect-ratio 3:4
+  moltcorp generate-image --prompt "Vintage fishing illustration" --output-file design.png --aspect-ratio 3:4
 
   # Edit an existing image using a reference
-  moltcorp generate-image --prompt "Add a sunset background" --reference-image base.png --file edited.png
+  moltcorp generate-image --prompt "Add a sunset background" --reference-image base.png --output-file edited.png
 
   # Generate at print quality
-  moltcorp generate-image --prompt "Bold typography: GONE FISHING" --file print.png --resolution 4K
+  moltcorp generate-image --prompt "Bold typography: GONE FISHING" --output-file print.png --resolution 4K
 
   # Use a URL as reference image
-  moltcorp generate-image --prompt "Similar style but with cats" --reference-image https://example.com/dogs.png --file cats.png
+  moltcorp generate-image --prompt "Similar style but with cats" --reference-image https://example.com/dogs.png --output-file cats.png
 
   # Multiple reference images for style composition
-  moltcorp generate-image --prompt "Combine these styles" --reference-image style1.png --reference-image style2.png --file combined.png`,
+  moltcorp generate-image --prompt "Combine these styles" --reference-image style1.png --reference-image style2.png --output-file combined.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -78,7 +78,7 @@ Examples:
 		c.HTTPClient.Timeout = 120 * time.Second
 
 		prompt, _ := cmd.Flags().GetString("prompt")
-		filePath, _ := cmd.Flags().GetString("file")
+		filePath, _ := cmd.Flags().GetString("output-file")
 		refImages, _ := cmd.Flags().GetStringSlice("reference-image")
 		aspectRatio, _ := cmd.Flags().GetString("aspect-ratio")
 		resolution, _ := cmd.Flags().GetString("resolution")
@@ -124,14 +124,14 @@ var generateImageUpscaleCmd = &cobra.Command{
 and cleaner — suitable for print-ready materials.
 
 Accepts a local file path or URL as input. The upscaled image is saved to
-the path specified by --file.
+the path specified by --output-file.
 
 Examples:
   # Upscale a local file
-  moltcorp generate-image upscale --image design.png --file design-hires.png
+  moltcorp generate-image upscale --image design.png --output-file design-hires.png
 
   # Upscale from a URL
-  moltcorp generate-image upscale --image https://example.com/logo.png --file logo-hires.png`,
+  moltcorp generate-image upscale --image https://example.com/logo.png --output-file logo-hires.png`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -142,7 +142,7 @@ Examples:
 		c.HTTPClient.Timeout = 120 * time.Second
 
 		imagePath, _ := cmd.Flags().GetString("image")
-		filePath, _ := cmd.Flags().GetString("file")
+		filePath, _ := cmd.Flags().GetString("output-file")
 
 		// Process the input image
 		imageObj, err := processImageInput(imagePath)
@@ -262,8 +262,8 @@ func init() {
 	// Generate image flags
 	generateImageCmd.Flags().String("prompt", "", "Text description of the image to generate (required)")
 	_ = generateImageCmd.MarkFlagRequired("prompt")
-	generateImageCmd.Flags().String("file", "", "Path to save the generated image (required)")
-	_ = generateImageCmd.MarkFlagRequired("file")
+	generateImageCmd.Flags().String("output-file", "", "Path to save the generated image (required)")
+	_ = generateImageCmd.MarkFlagRequired("output-file")
 	generateImageCmd.Flags().StringSlice("reference-image", nil, "URL or local file path for reference images (repeatable, max 5)")
 	generateImageCmd.Flags().String("aspect-ratio", "1:1", "Image aspect ratio: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9")
 	generateImageCmd.Flags().String("resolution", "1K", "Output resolution: 1K (standard), 2K (high), 4K (print)")
@@ -271,8 +271,8 @@ func init() {
 	// Upscale flags
 	generateImageUpscaleCmd.Flags().String("image", "", "URL or local file path of the image to upscale (required)")
 	_ = generateImageUpscaleCmd.MarkFlagRequired("image")
-	generateImageUpscaleCmd.Flags().String("file", "", "Path to save the upscaled image (required)")
-	_ = generateImageUpscaleCmd.MarkFlagRequired("file")
+	generateImageUpscaleCmd.Flags().String("output-file", "", "Path to save the upscaled image (required)")
+	_ = generateImageUpscaleCmd.MarkFlagRequired("output-file")
 
 	// Wire subcommands
 	generateImageCmd.AddCommand(generateImageUpscaleCmd)
