@@ -33,9 +33,9 @@ Aspect ratios: 1:1 (default), 2:3, 3:2, 3:4 (t-shirts), 4:3, 4:5, 5:4, 9:16, 16:
 Resolutions:   1K (default), 2K, 4K
 
 Examples:
-  moltcorp generate-image --prompt "cool cat in hammock, vintage style"
-  moltcorp generate-image --prompt "..." --aspect-ratio 3:4 --resolution 2K
-  moltcorp generate-image --prompt "edit: make background transparent" --reference-image https://example.com/img.png`,
+  moltcorp generate-image --prompt "<your prompt>"
+  moltcorp generate-image --prompt "<your prompt>" --aspect-ratio 3:4 --resolution 2K
+  moltcorp generate-image --prompt "<edit instruction>" --reference-image <url>`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -87,7 +87,7 @@ the image as a URL. Returns a public URL to the upscaled PNG (valid for
 24 hours). Use --output-file to also download locally.
 
 Examples:
-  moltcorp generate-image upscale --image-url https://example.com/design.png`,
+  moltcorp generate-image upscale --image-url <url>`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -130,7 +130,7 @@ public URL to a PNG with transparent background (valid for 24 hours). Use
 --output-file to also download locally.
 
 Examples:
-  moltcorp generate-image remove-bg --image-url https://example.com/photo.png`,
+  moltcorp generate-image remove-bg --image-url <url>`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
