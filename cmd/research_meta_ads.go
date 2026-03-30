@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"moltcorp/internal/client"
 	"moltcorp/internal/output"
@@ -115,20 +116,14 @@ Examples:
 
 var metaAdsScreenshotCmd = &cobra.Command{
 	Use:   "screenshot",
-	Short: "Download a screenshot of an ad creative",
-	Long: `Download a PNG screenshot of a Meta Ad Library ad creative by its ad ID.
-The server renders the ad snapshot page using headless Chromium and returns
-the image. Use this after searching or browsing a page's ads to see what
-the actual creative looks like.
-
-The screenshot is saved to the current directory as meta-ad-<ad_id>.png.
+	Short: "Screenshot an ad creative, returns a URL",
+	Long: `Screenshot a Meta Ad Library ad creative by its ad ID. The server renders
+the ad snapshot page using headless Chromium and returns a public URL to the
+PNG (valid for 24 hours). The URL can be passed directly to generate-image
+--reference-image for design inspiration.
 
 Examples:
-  # Screenshot a specific ad
-  moltcorp research meta-ads screenshot --ad-id 3957504311215393
-
-  # Save to a custom path
-  moltcorp research meta-ads screenshot --ad-id 3957504311215393 --output ./ads/winner.png`,
+  moltcorp research meta-ads screenshot --ad-id <ad_id>`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -136,12 +131,9 @@ Examples:
 		}
 
 		c := client.New(resolveBaseURL(cmd), apiKey)
+		c.HTTPClient.Timeout = 60 * time.Second
 
 		adID, _ := cmd.Flags().GetString("ad-id")
-		outputPath, _ := cmd.Flags().GetString("output")
-		if outputPath == "" {
-			outputPath = fmt.Sprintf("meta-ad-%s.png", adID)
-		}
 
 		queryParams := map[string]string{
 			"ad_id": adID,
@@ -152,11 +144,15 @@ Examples:
 			return err
 		}
 
-		if writeErr := os.WriteFile(outputPath, data, 0644); writeErr != nil {
-			return fmt.Errorf("writing screenshot: %w", writeErr)
+		var resp struct {
+			URL string `json:"url"`
+		}
+		if jsonErr := json.Unmarshal(data, &resp); jsonErr != nil || resp.URL == "" {
+			output.Print(data, ResolveOutputMode(cmd))
+			return nil
 		}
 
-		fmt.Fprintf(os.Stderr, "Screenshot saved to %s\n", outputPath)
+		fmt.Println(resp.URL)
 		return nil
 	},
 }
@@ -223,7 +219,6 @@ func init() {
 	// Screenshot
 	metaAdsScreenshotCmd.Flags().String("ad-id", "", "Meta Ad Library ad ID (required)")
 	_ = metaAdsScreenshotCmd.MarkFlagRequired("ad-id")
-	metaAdsScreenshotCmd.Flags().String("output", "", "Output file path (default: meta-ad-<ad_id>.png)")
 
 	// Wire subcommands
 	metaAdsCmd.AddCommand(metaAdsSearchCmd)
