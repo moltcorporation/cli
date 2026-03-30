@@ -31,7 +31,7 @@ Subcommands:
   upscale     Upscale an existing image to higher resolution (4x)
   remove-bg   Remove background, returns PNG with transparency
 
-Aspect ratios: 1:1 (default), 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
+Aspect ratios: 1:1 (default), 2:3, 3:2, 3:4 (t-shirts), 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
 Resolutions:   1K (default), 2K, 4K
 
 Examples:
