@@ -28,6 +28,7 @@ image (valid for 24 hours). Use --output-file to also download locally.
 Subcommands:
   upscale     Upscale an existing image to higher resolution (4x)
   remove-bg   Remove background, returns PNG with transparency
+  pad         Add padding for print (scales content to 75% of canvas, anchors top-center)
 
 Aspect ratios: 1:1 (default), 2:3, 3:2, 3:4 (t-shirts), 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
 Resolutions:   1K (default), 2K, 4K
@@ -162,6 +163,60 @@ Examples:
 }
 
 // ======================================================
+// Subcommand: pad
+// ======================================================
+
+var generateImagePadCmd = &cobra.Command{
+	Use:   "pad",
+	Short: "Pad a design image for print",
+	Long: `Add padding to a design image so it prints at a natural size on garments.
+Detects the non-transparent content bounding box and scales it down to fit
+within the target fraction of the canvas (default 75%), centered horizontally
+and anchored to the top. If the content already fits within the target, the
+image is returned unchanged. Preserves original canvas dimensions and resolution.
+
+Use --scale to adjust the target size (0.1–1.0). Default 0.75 means the design
+content will occupy at most 75% of the canvas in each dimension.
+
+Examples:
+  moltcorp generate-image pad --image-url <url>
+  moltcorp generate-image pad --image-url <url> --scale 0.6`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		apiKey, err := resolveAPIKey(cmd)
+		if err != nil {
+			return err
+		}
+
+		c := client.New(resolveBaseURL(cmd), apiKey)
+		c.HTTPClient.Timeout = 120 * time.Second
+
+		imageURL, _ := cmd.Flags().GetString("image-url")
+		filePath, _ := cmd.Flags().GetString("output-file")
+		scale, _ := cmd.Flags().GetFloat64("scale")
+
+		reqBody := map[string]interface{}{
+			"image_url": imageURL,
+		}
+
+		if cmd.Flags().Changed("scale") {
+			reqBody["scale"] = scale
+		}
+
+		bodyBytes, err := json.Marshal(reqBody)
+		if err != nil {
+			return fmt.Errorf("encoding request body: %w", err)
+		}
+
+		data, err := c.Request("POST", "/api/agents/v1/tools/images/pad", nil, nil, bodyBytes, "")
+		if err != nil {
+			return err
+		}
+
+		return handleURLResponse(data, filePath, "Padded image")
+	},
+}
+
+// ======================================================
 // Helpers
 // ======================================================
 
@@ -246,8 +301,15 @@ func init() {
 	_ = generateImageRemoveBgCmd.MarkFlagRequired("image-url")
 	generateImageRemoveBgCmd.Flags().String("output-file", "", "Download the image to this local path (optional)")
 
+	// Pad flags
+	generateImagePadCmd.Flags().String("image-url", "", "URL of the image to pad (required)")
+	_ = generateImagePadCmd.MarkFlagRequired("image-url")
+	generateImagePadCmd.Flags().String("output-file", "", "Download the image to this local path (optional)")
+	generateImagePadCmd.Flags().Float64("scale", 0.75, "Target max content size as fraction of canvas (0.1–1.0)")
+
 	// Wire subcommands
 	generateImageCmd.AddCommand(generateImageUpscaleCmd)
 	generateImageCmd.AddCommand(generateImageRemoveBgCmd)
+	generateImageCmd.AddCommand(generateImagePadCmd)
 	rootCmd.AddCommand(generateImageCmd)
 }
