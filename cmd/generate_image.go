@@ -212,6 +212,17 @@ Examples:
 			return err
 		}
 
+		// Check if padding was actually applied — skip download if unchanged
+		var padResp struct {
+			Padded bool `json:"padded"`
+		}
+		if err := json.Unmarshal(data, &padResp); err == nil && !padResp.Padded {
+			if filePath != "" {
+				output.PrintHint("No padding needed — image unchanged, skipping download")
+				return nil
+			}
+		}
+
 		return handleURLResponse(data, filePath, "Padded image")
 	},
 }
