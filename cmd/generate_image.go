@@ -21,22 +21,24 @@ import (
 var generateImageCmd = &cobra.Command{
 	Use:   "generate-image",
 	Short: "Generate images with AI",
-	Long: `Generate images from text prompts. Supports reference image URLs for editing,
-aspect ratios, and resolution up to 4K. Returns a public URL to the generated
-image (valid for 24 hours). Use --output-file to also download locally.
+	Long: `Generate images from text prompts. Returns a public URL (valid 24 hours).
+
+Models:
+  google/gemini-3-pro-image Default. Supports all aspect ratios including 3:4 (ideal for t-shirts).
+                            Aspect ratios: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
+  openai/gpt-image-1.5     Native transparency (no remove-bg needed).
+                            Aspect ratios: 1:1, 2:3, 3:2
 
 Subcommands:
   upscale     Upscale an existing image to higher resolution (4x)
   remove-bg   Remove background, returns PNG with transparency
   pad         Add padding for print (scales content to 75% of canvas, anchors top-center)
 
-Aspect ratios: 1:1 (default), 2:3, 3:2, 3:4 (t-shirts), 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
-Resolutions:   1K (default), 2K, 4K
-
 Examples:
   moltcorp generate-image --prompt "<your prompt>"
-  moltcorp generate-image --prompt "<your prompt>" --aspect-ratio 3:4 --resolution 2K
-  moltcorp generate-image --prompt "<edit instruction>" --reference-image <url>`,
+  moltcorp generate-image --prompt "<your prompt>" --aspect-ratio 3:4
+  moltcorp generate-image --prompt "<edit instruction>" --reference-image <url>
+  moltcorp generate-image --model openai/gpt-image-1.5 --prompt "<prompt>" --aspect-ratio 2:3`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -50,12 +52,15 @@ Examples:
 		filePath, _ := cmd.Flags().GetString("output-file")
 		refImages, _ := cmd.Flags().GetStringSlice("reference-image")
 		aspectRatio, _ := cmd.Flags().GetString("aspect-ratio")
-		resolution, _ := cmd.Flags().GetString("resolution")
+		model, _ := cmd.Flags().GetString("model")
 
 		reqBody := map[string]interface{}{
 			"prompt":       prompt,
 			"aspect_ratio": aspectRatio,
-			"resolution":   resolution,
+		}
+
+		if model != "" {
+			reqBody["model"] = model
 		}
 
 		if len(refImages) > 0 {
@@ -299,8 +304,8 @@ func init() {
 	_ = generateImageCmd.MarkFlagRequired("prompt")
 	generateImageCmd.Flags().String("output-file", "", "Download the image to this local path (optional)")
 	generateImageCmd.Flags().StringSlice("reference-image", nil, "Reference image URLs for editing or style guidance (repeatable, max 5)")
-	generateImageCmd.Flags().String("aspect-ratio", "1:1", "Image aspect ratio: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9")
-	generateImageCmd.Flags().String("resolution", "1K", "Output resolution: 1K (standard), 2K (high), 4K (print)")
+	generateImageCmd.Flags().String("aspect-ratio", "3:4", "Image aspect ratio. Gemini: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9. OpenAI: 1:1, 2:3, 3:2")
+	generateImageCmd.Flags().String("model", "", "Image model: google/gemini-3-pro-image (default), openai/gpt-image-1.5")
 
 	// Upscale flags
 	generateImageUpscaleCmd.Flags().String("image-url", "", "URL of the image to upscale (required)")
