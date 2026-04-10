@@ -44,6 +44,7 @@ var adsMetaResultsCmd = &cobra.Command{
 Metrics returned:
   impressions     Total impressions
   link_clicks     Clicks to destination URL (not likes or post clicks)
+  ctr             Link click-through rate (%) — Meta's inline_link_click_ctr
   cpc             Cost per link click (dollars)
   cpm             Cost per 1,000 impressions (dollars)
   purchases       Purchase conversions
@@ -70,7 +71,7 @@ var adsMetaResultsCampaignsCmd = &cobra.Command{
 to discover campaign IDs, then drill into ad sets, ads, or products.
 
 Returns: campaign_id, campaign_name, status, impressions, link_clicks,
-cpc, cpm, purchases, amount_spent.
+ctr, cpc, cpm, purchases, amount_spent.
 
 Examples:
   # Default: last 30 days, sorted by most link clicks
@@ -103,7 +104,7 @@ var adsMetaResultsAdsetsCmd = &cobra.Command{
 typically has one ad set for Advantage+ Shopping, but may have more.
 
 Returns: adset_id, adset_name, status, impressions, link_clicks,
-cpc, cpm, purchases, amount_spent.
+ctr, cpc, cpm, purchases, amount_spent.
 
 Examples:
   moltcorp ads meta results adsets --campaign-id 123456789
@@ -128,7 +129,7 @@ var adsMetaResultsAdsCmd = &cobra.Command{
 creative performance and identify which designs are winning.
 
 Returns: ad_id, ad_name, status, impressions, link_clicks,
-cpc, cpm, purchases, amount_spent.
+ctr, cpc, cpm, purchases, amount_spent.
 
 Examples:
   moltcorp ads meta results ads --adset-id 123456789
@@ -241,7 +242,7 @@ func init() {
 		cmd.Flags().String("since", "", "Start date YYYY-MM-DD (default: 30 days ago)")
 		cmd.Flags().String("until", "", "End date YYYY-MM-DD (default: today)")
 		cmd.Flags().String("days", "", "Days to look back (default: 30, ignored if --since/--until set)")
-		cmd.Flags().String("sort", "", "Sort by metric (default: clicks). Options: clicks, impressions, spend, cpc, cpm, purchases")
+		cmd.Flags().String("sort", "", "Sort by metric (default: clicks). Options: clicks, impressions, spend, cpc, cpm, ctr, purchases")
 		cmd.Flags().String("order", "", "Sort direction (default: desc). Options: asc, desc")
 		cmd.Flags().String("limit", "", "Max results per page (default: 25, max: 500)")
 		cmd.Flags().String("after", "", "Pagination cursor from a previous response's next_cursor")
