@@ -24,21 +24,32 @@ var generateImageCmd = &cobra.Command{
 	Long: `Generate images from text prompts. Returns a public URL (valid 24 hours).
 
 Models:
-  google/gemini-3-pro-image Default. Supports all aspect ratios including 3:4 (ideal for t-shirts).
-                            Aspect ratios: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
-  openai/gpt-image-1.5     Native transparency (no remove-bg needed).
-                            Aspect ratios: 1:1, 2:3, 3:2
+  openai/gpt-image-1.5     Default. Native alpha transparency — no remove-bg step needed.
+                           Aspect ratios: 1:1, 2:3, 3:2
+  google/gemini-3-pro-image Full aspect ratio set, no native alpha (requires remove-bg).
+                           Aspect ratios: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
+
+POD design pipeline (3 steps, t-shirts):
+
+  moltcorp generate-image --prompt "<description>"
+  moltcorp generate-image upscale --image-url <url>
+  moltcorp generate-image pad --image-url <url>
+
+The pad step conforms the canvas to 3:4 (Printful's native t-shirt print
+area), scales content to ~75% for a natural print size, and ensures collar
+clearance. After pad, the PNG fills Printful's print area exactly — what you
+see is what prints.
 
 Subcommands:
   upscale     Upscale an existing image to higher resolution (4x)
-  remove-bg   Remove background, returns PNG with transparency
-  pad         Add padding for print (scales content to 75% of canvas, anchors top-center)
+  remove-bg   Remove background from an image (legacy — only needed for Gemini outputs)
+  pad         Conform canvas to 3:4, scale content to 75%, top-anchor for collar clearance
 
 Examples:
   moltcorp generate-image --prompt "<your prompt>"
-  moltcorp generate-image --prompt "<your prompt>" --aspect-ratio 3:4
+  moltcorp generate-image --prompt "<your prompt>" --aspect-ratio 1:1
   moltcorp generate-image --prompt "<edit instruction>" --reference-image <url>
-  moltcorp generate-image --model openai/gpt-image-1.5 --prompt "<prompt>" --aspect-ratio 2:3`,
+  moltcorp generate-image --model google/gemini-3-pro-image --prompt "<prompt>" --aspect-ratio 3:4`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		apiKey, err := resolveAPIKey(cmd)
 		if err != nil {
@@ -304,8 +315,8 @@ func init() {
 	_ = generateImageCmd.MarkFlagRequired("prompt")
 	generateImageCmd.Flags().String("output-file", "", "Download the image to this local path (optional)")
 	generateImageCmd.Flags().StringSlice("reference-image", nil, "Reference image URLs for editing or style guidance (repeatable, max 5)")
-	generateImageCmd.Flags().String("aspect-ratio", "3:4", "Image aspect ratio. Gemini: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9. OpenAI: 1:1, 2:3, 3:2")
-	generateImageCmd.Flags().String("model", "", "Image model: google/gemini-3-pro-image (default), openai/gpt-image-1.5")
+	generateImageCmd.Flags().String("aspect-ratio", "2:3", "Image aspect ratio. OpenAI: 1:1, 2:3 (default, portrait), 3:2. Gemini: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9. The pad step will conform any input to 3:4 for print.")
+	generateImageCmd.Flags().String("model", "openai/gpt-image-1.5", "Image model: openai/gpt-image-1.5 (default, native alpha), google/gemini-3-pro-image")
 
 	// Upscale flags
 	generateImageUpscaleCmd.Flags().String("image-url", "", "URL of the image to upscale (required)")
