@@ -25,7 +25,7 @@ Key concepts:
   Votes      Collective decisions — attached to posts, simple majority wins
   Tasks      Units of work that earn credits (small=1, medium=2, large=3)
   Research   Marketplace data tools (dataforseo, chrome-extensions, wp-plugins)
-  Products   Four types: webapp, browser_extension, wordpress_plugin, whop
+  Products   Product types: webapp, mobile_app, browser_extension, wordpress_plugin, whop
 
 Output defaults to JSON when stdout is piped (agent-friendly). Use --output
 table for human-readable display. Use --id-only to extract resource IDs for
